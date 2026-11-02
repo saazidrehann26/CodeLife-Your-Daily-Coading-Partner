@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vertical 3D Card Flip Animation | CodeLife</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
+  
+  <style>
+    :root {
+      --bg-dark: #120b0a;
+      --card-bg-gradient: linear-gradient(160deg, #382421 0%, #261715 50%, #1c100e 100%);
+      --card-border: rgba(225, 175, 155, 0.28);
+      --card-radius: 28px;
+      --primary-accent: #e6c4b4;
+      --btn-bg: linear-gradient(135deg, #7a544c 0%, #543731 100%);
+      --btn-hover: linear-gradient(135deg, #8a6057 0%, #63413a 100%);
+      --input-bg: rgba(255, 255, 255, 0.05);
+      --input-border: rgba(225, 175, 155, 0.2);
+      --text-main: #f5ece8;
+      --text-muted: #bdaaa2;
+      --glow-halo: rgba(225, 175, 155, 0.15);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 50% 25%, rgba(120, 75, 65, 0.25) 0%, transparent 60%),
+        radial-gradient(circle at 50% 80%, rgba(65, 38, 33, 0.35) 0%, transparent 70%);
+      font-family: 'Outfit', sans-serif;
+      color: var(--text-main);
+      padding: 24px;
+      overflow-x: hidden;
+    }
+
+    /* ==========================================================================
+       CORE REQUIREMENT 1: 3D Perspective Container
+       ========================================================================== */
+    .card-container {
+      perspective: 1500px;
+      width: 100%;
+      max-width: 440px;
+      min-height: 590px;
+      position: relative;
+    }
+
+    /* Ambient Outer Halo Behind Card */
+    .card-container::before {
+      content: '';
+      position: absolute;
+      inset: -15px;
+      border-radius: 40px;
+      background: radial-gradient(ellipse at 50% 50%, rgba(255, 255, 255, 0.08) 0%, var(--glow-halo) 45%, transparent 75%);
+      filter: blur(28px);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ==========================================================================
+       CORE REQUIREMENT 2: 3D Transform Card Element
+       ========================================================================== */
+    .card {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 590px;
+      transform-style: preserve-3d;
+      transition: transform 0.7s cubic-bezier(0.4, 0.2, 0.2, 1);
+      z-index: 1;
+    }
+
+    /* ==========================================================================
+       CORE REQUIREMENT 4: Vertical Flip along X-Axis
+       ========================================================================== */
+    .card.flipped {
+      transform: rotateX(180deg);
+    }
+
+    /* ==========================================================================
+       CORE REQUIREMENT 3: Backface Visibility & Faces Setup
+       ========================================================================== */
+    .face {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      border-radius: var(--card-radius);
+      background: var(--card-bg-gradient);
+      border: 1px solid var(--card-border);
+      box-shadow: 
+        0 20px 50px rgba(0, 0, 0, 0.7),
+        0 0 30px rgba(225, 175, 155, 0.06),
+        inset 0 1px 1px rgba(255, 255, 255, 0.25);
+      padding: 38px 32px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+    }
+
+    /* Front Face (Sign In) */
+    .face.front {
+      transform: rotateX(0deg);
+      z-index: 2;
+    }
+
+    /* Back Face (Create Account - initially rotated 180deg on X-axis) */
+    .face.back {
+      transform: rotateX(180deg);
+    }
+
+    /* Brand Header Tag */
+    .brand-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--primary-accent);
+      background: rgba(225, 175, 155, 0.1);
+      border: 1px solid rgba(225, 175, 155, 0.25);
+      padding: 5px 14px;
+      border-radius: 9999px;
+      width: fit-content;
+      margin-bottom: 14px;
+    }
+
+    .brand-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--primary-accent);
+      box-shadow: 0 0 8px var(--primary-accent);
+    }
+
+    /* Typography */
+    .form-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 28px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 6px;
+      letter-spacing: 0.3px;
+    }
+
+    .form-subtitle {
+      font-size: 13.5px;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-bottom: 22px;
+    }
+
+    /* Form Fields */
+    .auth-form {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      flex: 1;
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .input-group label {
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.4px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 12px 15px;
+      background: var(--input-bg);
+      border: 1px solid var(--input-border);
+      border-radius: 12px;
+      color: #ffffff;
+      font-size: 14px;
+      font-family: inherit;
+      outline: none;
+      transition: all 0.25s ease;
+    }
+
+    .input-group input:focus {
+      border-color: rgba(225, 175, 155, 0.65);
+      background: rgba(255, 255, 255, 0.08);
+      box-shadow: 0 0 16px rgba(225, 175, 155, 0.18);
+    }
+
+    .input-group input::placeholder {
+      color: rgba(255, 255, 255, 0.28);
+    }
+
+    /* Form Options Row */
+    .form-options {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12.5px;
+      margin-top: 2px;
+    }
+
+    .remember-me {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      color: var(--text-muted);
+      cursor: pointer;
+    }
+
+    .remember-me input {
+      accent-color: #7a544c;
+      cursor: pointer;
+    }
+
+    .forgot-link {
+      color: var(--primary-accent);
+      text-decoration: none;
+      transition: opacity 0.2s;
+    }
+
+    .forgot-link:hover {
+      text-decoration: underline;
+    }
+
+    /* Primary Submit Button */
+    .submit-btn {
+      margin-top: 8px;
+      width: 100%;
+      padding: 13px;
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      border-radius: 14px;
+      background: var(--btn-bg);
+      color: #ffffff;
+      font-size: 14.5px;
+      font-weight: 600;
+      font-family: inherit;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      cursor: pointer;
+      box-shadow: 
+        0 6px 20px rgba(0, 0, 0, 0.4),
+        inset 0 1px 1px rgba(255, 255, 255, 0.35);
+      transition: all 0.25s ease;
+    }
+
+    .submit-btn:hover {
+      background: var(--btn-hover);
+      box-shadow: 
+        0 8px 25px rgba(0, 0, 0, 0.55),
+        0 0 18px rgba(225, 175, 155, 0.25),
+        inset 0 1px 1px rgba(255, 255, 255, 0.5);
+      transform: translateY(-1px);
+    }
+
+    .submit-btn:active {
+      transform: translateY(1px);
+    }
+
+    /* Switch Bottom Bar */
+    .switch-footer {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid rgba(225, 175, 155, 0.15);
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .toggle-trigger {
+      background: transparent;
+      border: none;
+      color: #ffffff;
+      font-weight: 700;
+      font-size: 13.5px;
+      font-family: inherit;
+      cursor: pointer;
+      position: relative;
+      padding: 2px 4px;
+      transition: color 0.2s;
+    }
+
+    .toggle-trigger::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 4px;
+      right: 4px;
+      height: 1.5px;
+      background: var(--primary-accent);
+      border-radius: 2px;
+      transform: scaleX(0.7);
+      transition: transform 0.25s ease;
+    }
+
+    .toggle-trigger:hover {
+      color: var(--primary-accent);
+    }
+
+    .toggle-trigger:hover::after {
+      transform: scaleX(1);
+    }
+  </style>
+</head>
+<body>
+
+  <!-- =========================================================================
+       MAIN CONTAINER WITH PERSPECTIVE
+       ========================================================================= -->
+  <div class="card-container">
+    <div class="card" id="card">
+      
+      <!-- =====================================================================
+           FRONT FACE: "Welcome Back" Sign In Form
+           ===================================================================== -->
+      <div class="face front">
+        <header>
+          <div class="brand-tag">
+            <span class="brand-dot"></span>
+            <span>CodeLife</span>
+          </div>
+          <h2 class="form-title">Welcome Back</h2>
+          <p class="form-subtitle">Enter your credentials to continue your coding journey</p>
+        </header>
+
+        <form class="auth-form" onsubmit="event.preventDefault()">
+          <div class="input-group">
+            <label for="signin-email">Email or Username</label>
+            <input type="text" id="signin-email" placeholder="coder@codelife.dev" required>
+          </div>
+
+          <div class="input-group">
+            <label for="signin-password">Password</label>
+            <input type="password" id="signin-password" placeholder="••••••••••••" required>
+          </div>
+
+          <div class="form-options">
+            <label class="remember-me">
+              <input type="checkbox"> <span>Remember me</span>
+            </label>
+            <a href="#" class="forgot-link">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="submit-btn">
+            <span>Sign In</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </form>
+
+        <footer class="switch-footer">
+          <span>Don't have an account?</span>
+          <button type="button" class="toggle-trigger" id="joinNowBtn">Join now</button>
+        </footer>
+      </div>
+
+      <!-- =====================================================================
+           BACK FACE: "Create Account" Sign Up Form (Rotated 180deg on X-axis)
+           ===================================================================== -->
+      <div class="face back">
+        <header>
+          <div class="brand-tag">
+            <span class="brand-dot"></span>
+            <span>CodeLife</span>
+          </div>
+          <h2 class="form-title">Create Account</h2>
+          <p class="form-subtitle">Join developers building daily coding habits</p>
+        </header>
+
+        <form class="auth-form" onsubmit="event.preventDefault()">
+          <div class="input-group">
+            <label for="signup-name">Full Name</label>
+            <input type="text" id="signup-name" placeholder="Ada Lovelace" required>
+          </div>
+
+          <div class="input-group">
+            <label for="signup-email">Email Address</label>
+            <input type="email" id="signup-email" placeholder="ada@domain.com" required>
+          </div>
+
+          <div class="input-group">
+            <label for="signup-password">Password</label>
+            <input type="password" id="signup-password" placeholder="Min. 8 characters" required>
+          </div>
+
+          <button type="submit" class="submit-btn">
+            <span>Get Started</span>
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+          </button>
+        </form>
+
+        <footer class="switch-footer">
+          <span>Already have an account?</span>
+          <button type="button" class="toggle-trigger" id="logInBtn">Log in</button>
+        </footer>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- =========================================================================
+       CORE REQUIREMENT 5: JavaScript Toggle Function
+       ========================================================================= -->
+  <script>
+    const card = document.getElementById('card');
+    const joinNowBtn = document.getElementById('joinNowBtn');
+    const logInBtn = document.getElementById('logInBtn');
+
+    // Toggle the 'flipped' class on card element
+    function toggleCard() {
+      card.classList.toggle('flipped');
+    }
+
+    // Attach click events to both action buttons
+    joinNowBtn.addEventListener('click', toggleCard);
+    logInBtn.addEventListener('click', toggleCard);
+  </script>
+</body>
+</html>

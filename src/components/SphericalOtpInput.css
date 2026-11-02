@@ -1,0 +1,136 @@
+/* ==========================================================================
+   5 SPHERICAL OTP INPUT BOXES
+   Embossed 3D Spherical Cavities with White Backlit Accent
+   ========================================================================== */
+
+.spherical-otp-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  width: 100%;
+  margin: 14px 0 10px 0;
+  box-sizing: border-box;
+}
+
+/* Individual Spherical Container */
+.spherical-otp-sphere {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  aspect-ratio: 1 / 1;
+  
+  /* Debossed Neumorphic Spherical Cavity */
+  background: #503631;
+  box-shadow: 
+    inset 3px 3px 6px rgba(0, 0, 0, 0.6),
+    inset 1px 1px 2px rgba(0, 0, 0, 0.4),
+    inset -1.5px -1.5px 3px rgba(255, 255, 255, 0.14),
+    0 2px 5px rgba(0, 0, 0, 0.25);
+  border: 1.5px solid rgba(0, 0, 0, 0.35);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+/* Specular Light Catch on the Upper Curve */
+.sphere-specular-light {
+  position: absolute;
+  top: 3px;
+  left: 10px;
+  right: 10px;
+  height: 12px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, transparent 100%);
+  pointer-events: none;
+}
+
+/* Input Inside the Sphere */
+.spherical-otp-input {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: transparent;
+  border: none;
+  outline: none;
+  text-align: center;
+  
+  /* Proportional Font Ratio to surroundings */
+  font-family: 'JetBrains Mono', 'Outfit', monospace;
+  font-size: 24px;
+  font-weight: 700;
+  color: #ffffff;
+  padding: 0;
+  margin: 0;
+  caret-color: #ffffff;
+  box-sizing: border-box;
+  text-shadow: 
+    0 1px 2px rgba(0, 0, 0, 0.6),
+    0 0 10px rgba(255, 255, 255, 0.35);
+}
+
+/* Focus State: White Backlit Rim Glow */
+.spherical-otp-sphere:focus-within {
+  border-color: rgba(255, 255, 255, 0.55);
+  transform: translateY(-2px) scale(1.05);
+  box-shadow: 
+    /* Pure white backlight halo */
+    0 0 18px rgba(255, 255, 255, 0.45),
+    0 0 0 2px rgba(255, 255, 255, 0.35),
+    inset 2.5px 2.5px 5px rgba(0, 0, 0, 0.65),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.25);
+}
+
+/* Filled State */
+.spherical-otp-sphere.is-filled {
+  border-color: rgba(255, 255, 255, 0.3);
+  background: linear-gradient(145deg, #573a34, #4c322d);
+  box-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.2),
+    inset 2px 2px 4px rgba(0, 0, 0, 0.5),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.15);
+}
+
+/* Disabled State */
+.spherical-otp-sphere.is-disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.spherical-otp-sphere.is-disabled .spherical-otp-input {
+  cursor: not-allowed;
+}
+
+/* Mobile Responsive Adjustments */
+@media (max-width: 480px) {
+  .spherical-otp-row {
+    gap: 8px;
+  }
+  
+  .spherical-otp-sphere {
+    width: 48px;
+    height: 48px;
+  }
+  
+  .spherical-otp-input {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 360px) {
+  .spherical-otp-row {
+    gap: 6px;
+  }
+  
+  .spherical-otp-sphere {
+    width: 42px;
+    height: 42px;
+  }
+  
+  .spherical-otp-input {
+    font-size: 18px;
+  }
+}

@@ -1,0 +1,1209 @@
+/* ==========================================================================
+   CODELIFE LANDING & INTRO PAGE
+   Primary Tone: #60433D with Pure White & Warm Peach Accents
+   Fixed Background: public/log_in_page_bg.jpg with smooth page scrolling
+   ========================================================================== */
+
+.landing-page-container {
+  position: relative;
+  width: 100%;
+  min-height: 100vh;
+  overflow-x: hidden;
+  color: #fcf9f8;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  scroll-behavior: smooth;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   1. FIXED STILL BACKGROUND LAYER
+   ========================================================================== */
+.landing-fixed-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-color: #180f0e;
+  background-image: url('/log_in_page_bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.landing-bg-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 30%, rgba(24, 15, 14, 0.45) 0%, rgba(18, 10, 9, 0.82) 100%);
+  pointer-events: none;
+}
+
+/* ==========================================================================
+   2. TOP NAVIGATION BAR (Fixed pinned, never half-cut on refresh)
+   ========================================================================== */
+.landing-navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 1000;
+  background: rgba(26, 17, 15, 0.88);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 28px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+}
+
+.landing-navbar-inner {
+  max-width: 1360px;
+  margin: 0 auto;
+  padding: 12px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Brand Identity */
+.landing-brand-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-shrink: 0;
+}
+
+.landing-company-wrapper {
+  display: flex;
+  align-items: center;
+}
+
+.landing-company-wrapper .company-logo-container {
+  position: static;
+  margin: 0;
+}
+
+.landing-company-wrapper .company-logo-badge {
+  padding: 6px 14px;
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.landing-company-wrapper .company-logo-img {
+  height: 32px;
+  max-width: 110px;
+  width: auto;
+}
+
+.landing-brand-divider {
+  width: 1px;
+  height: 26px;
+  background: rgba(255, 255, 255, 0.16);
+}
+
+.landing-brand-logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.landing-logo-circle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 14px rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+}
+
+.landing-logo-img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
+.landing-brand-name {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: 21px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.3);
+}
+
+/* Navigation Controls on Right */
+.landing-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* "Get started for free" Primary CTA Button */
+.landing-cta-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 9px 20px;
+  background: linear-gradient(135deg, #7a544c 0%, #60433d 60%, #4a322d 100%);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.32);
+  border-radius: 9999px;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 14.5px;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 
+    0 4px 18px rgba(0, 0, 0, 0.45),
+    0 0 16px rgba(255, 255, 255, 0.18),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4);
+  transition: all 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+  white-space: nowrap;
+}
+
+.landing-cta-btn:hover {
+  transform: translateY(-2px);
+  background: linear-gradient(135deg, #8a6057 0%, #6d4c45 60%, #573a34 100%);
+  border-color: rgba(255, 255, 255, 0.55);
+  box-shadow: 
+    0 6px 24px rgba(0, 0, 0, 0.55),
+    0 0 24px rgba(255, 255, 255, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6);
+}
+
+.landing-cta-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+}
+
+.landing-btn-arrow {
+  transition: transform 0.22s ease;
+}
+
+.landing-cta-btn:hover .landing-btn-arrow {
+  transform: translateX(3px);
+}
+
+/* Nav Item Buttons (Contact Us, Privacy Policy, About us) */
+.landing-nav-item {
+  background: transparent;
+  border: none;
+  color: #d9cac7;
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 14px;
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  white-space: nowrap;
+}
+
+.landing-nav-item:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
+}
+
+/* Authenticated User Pill on Landing Page */
+.landing-user-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 18px;
+  background: rgba(43, 27, 24, 0.75);
+  border: 1.5px solid rgba(225, 175, 155, 0.35);
+  border-radius: 9999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s ease;
+  user-select: none;
+}
+
+.landing-user-badge:hover {
+  background: rgba(60, 36, 32, 0.85);
+  border-color: rgba(255, 255, 255, 0.5);
+  transform: translateY(-1px);
+}
+
+.landing-user-avatar,
+.landing-user-avatar-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(145deg, #8a5c52 0%, #50312a 100%);
+  border: 1.5px solid rgba(230, 196, 180, 0.45);
+  color: #e6c4b4;
+  flex-shrink: 0;
+}
+
+.landing-user-name {
+  font-family: 'Outfit', system-ui, sans-serif;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #ffffff;
+  white-space: nowrap;
+}
+
+/* ==========================================================================
+   3. MAIN SCROLLABLE CONTENT & SECTIONS
+   ========================================================================== */
+.landing-main-content {
+  position: relative;
+  z-index: 10;
+  max-width: 1340px;
+  margin: 0 auto;
+  padding: 105px 28px 100px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 125px;
+  box-sizing: border-box;
+}
+
+/* ==========================================================================
+   4. HERO / PURPOSE SECTION
+   ========================================================================== */
+.landing-hero-section {
+  padding-top: 15px;
+  text-align: center;
+}
+
+.landing-hero-content {
+  max-width: 1000px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 28px;
+}
+
+/* Hero Image Card (public/landing_page.jpg) */
+.landing-hero-media {
+  width: 100%;
+  max-width: 960px;
+}
+
+.landing-media-frame {
+  position: relative;
+  width: 100%;
+  border-radius: 28px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  background: rgba(40, 26, 23, 0.7);
+  box-shadow: 
+    0 16px 48px rgba(0, 0, 0, 0.65),
+    0 0 35px rgba(215, 183, 166, 0.16),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.landing-hero-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  aspect-ratio: 1080 / 602;
+  object-fit: cover;
+}
+
+.landing-media-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 0%, rgba(255, 255, 255, 0.12) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* Heading: "What is the purpose of CodeLife" */
+.landing-hero-title {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: clamp(32px, 4.5vw, 46px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #ffffff;
+  margin: 12px 0 0 0;
+  text-shadow: 
+    0 2px 0 rgba(255, 255, 255, 0.2),
+    0 0 24px rgba(255, 255, 255, 0.25);
+}
+
+.highlight-text {
+  color: #e6c4b4;
+  text-shadow: 0 0 18px rgba(230, 196, 180, 0.45);
+}
+
+/* Paragraph text from public/webite_landing_text.txt */
+.landing-hero-desc-wrapper {
+  max-width: 880px;
+  background: rgba(38, 24, 21, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 24px;
+  padding: 32px 36px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 
+    0 12px 36px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+}
+
+.landing-hero-desc {
+  font-size: clamp(16px, 1.8vw, 18px);
+  line-height: 1.75;
+  color: #e8dedb;
+  margin: 0;
+  text-align: justify;
+  letter-spacing: 0.15px;
+}
+
+/* ==========================================================================
+   5. SECTION DIVIDER
+   ========================================================================== */
+.landing-section-divider {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  margin: -30px 0;
+}
+
+.landing-section-divider::before {
+  content: '';
+  position: absolute;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 0%, rgba(215, 183, 166, 0.3) 50%, transparent 100%);
+}
+
+.divider-pill {
+  position: relative;
+  z-index: 2;
+  background: #2a1b18;
+  border: 1px solid rgba(215, 183, 166, 0.45);
+  padding: 10px 34px;
+  border-radius: 9999px;
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: 24px;
+  font-weight: 700;
+  text-transform: none;
+  letter-spacing: 0.5px;
+  color: #ffffff;
+  text-shadow: 0 1px 12px rgba(255, 255, 255, 0.35);
+  box-shadow: 
+    0 4px 18px rgba(0, 0, 0, 0.55),
+    0 0 18px rgba(255, 255, 255, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ==========================================================================
+   6. FEATURE SECTIONS GRID
+   ========================================================================== */
+.landing-feature-section {
+  width: 100%;
+}
+
+.landing-feature-grid {
+  display: grid;
+  grid-template-columns: 1fr 1.15fr;
+  align-items: center;
+  gap: 56px;
+}
+
+.landing-feature-reversed .landing-feature-grid {
+  grid-template-columns: 1.15fr 1fr;
+}
+
+/* Feature Text Column */
+.landing-feature-text {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.landing-feature-title {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: clamp(30px, 3.8vw, 42px);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.2;
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.25),
+    0 0 20px rgba(255, 255, 255, 0.2);
+}
+
+.landing-feature-description {
+  font-size: 16.5px;
+  line-height: 1.7;
+  color: #d8c7c3;
+  margin: 0;
+}
+
+.feature-perks-list {
+  list-style: none;
+  padding: 0;
+  margin: 6px 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.feature-perks-list li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 15px;
+  color: #ece1de;
+}
+
+.perk-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(215, 183, 166, 0.2);
+  border: 1px solid rgba(215, 183, 166, 0.4);
+  color: #e6c4b4;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Feature Media Column Frame */
+.landing-feature-media {
+  width: 100%;
+}
+
+.landing-card-glow-wrap {
+  position: relative;
+  border-radius: 24px;
+  background: rgba(36, 23, 21, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  padding: 12px;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 
+    0 16px 42px rgba(0, 0, 0, 0.55),
+    0 0 28px rgba(180, 130, 105, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  overflow: hidden;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.landing-card-glow-wrap:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 22px 52px rgba(0, 0, 0, 0.65),
+    0 0 38px rgba(215, 183, 166, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.landing-feature-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  object-fit: cover;
+}
+
+/* ==========================================================================
+   7. ENLARGED COMPILER SHOWCASE (Item 4: Increased Size of Compiler Pictures)
+   ========================================================================== */
+.landing-feature-compiler .landing-compiler-grid {
+  grid-template-columns: 1.45fr 1fr;
+  gap: 52px;
+  align-items: center;
+}
+
+.compiler-media-container {
+  width: 100%;
+}
+
+.compiler-glow-wrap {
+  position: relative;
+  border-radius: 26px;
+  background: rgba(36, 23, 21, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  padding: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.7),
+    0 0 45px rgba(180, 130, 105, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  overflow: hidden;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.compiler-glow-wrap:hover {
+  transform: translateY(-4px) scale(1.018);
+  box-shadow: 
+    0 30px 72px rgba(0, 0, 0, 0.8),
+    0 0 55px rgba(230, 196, 180, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.45);
+}
+
+.compiler-feature-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  object-fit: contain;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55);
+}
+
+/* Code Editor: Supported Languages Showcase */
+.languages-showcase-box {
+  margin-top: 14px;
+  padding: 18px;
+  border-radius: 18px;
+  background: rgba(28, 17, 15, 0.65);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.languages-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #bfaaa5;
+  margin-bottom: 12px;
+}
+
+.languages-grid {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.language-pill {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 8px 18px;
+  background: rgba(50, 32, 29, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 9999px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  transition: transform 0.25s ease, border-color 0.25s ease, background 0.25s ease;
+}
+
+.language-pill:hover {
+  transform: translateY(-2px);
+  border-color: rgba(230, 196, 180, 0.6);
+  background: rgba(65, 42, 38, 0.85);
+}
+
+.lang-icon-wrap {
+  width: 29px;
+  height: 29px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lang-logo {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.lang-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   8. STREAK COUNTER FEATURE: STREAK CALLOUT & GRAPH
+   ========================================================================== */
+.streak-callout-card {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: rgba(36, 23, 21, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  margin-top: 6px;
+}
+
+.streak-icon-wrap {
+  width: 58px;
+  height: 58px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 16px rgba(255, 120, 50, 0.25);
+  flex-shrink: 0;
+}
+
+.streak-badge-img {
+  width: 44px;
+  height: 44px;
+  object-fit: contain;
+}
+
+.streak-card-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.streak-card-tag {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #e6c4b4;
+}
+
+.streak-card-quote {
+  font-size: 15px;
+  font-weight: 600;
+  font-style: italic;
+  color: #ffffff;
+  margin: 0;
+}
+
+.graph-media-wrap {
+  padding: 14px;
+}
+
+.graph-img {
+  aspect-ratio: 1080 / 806;
+}
+
+.graph-caption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  font-size: 12.5px;
+  color: #bfaaa5;
+}
+
+.caption-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 8px #22c55e;
+}
+
+/* ==========================================================================
+   9. ENDING SECTION: COMBINE SHOWCASE & FINAL CTA
+   ========================================================================== */
+.landing-ending-section {
+  padding-top: 40px;
+}
+
+.ending-content-wrapper {
+  max-width: 1040px;
+  margin: 0 auto;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.ending-title {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: clamp(32px, 4.2vw, 44px);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  text-shadow: 0 2px 20px rgba(255, 255, 255, 0.2);
+}
+
+.ending-subtitle {
+  font-size: 18px;
+  color: #d8c7c3;
+  margin: 0;
+  max-width: 650px;
+}
+
+.ending-media-container {
+  width: 100%;
+  margin: 16px 0;
+}
+
+.combine-frame {
+  max-width: 980px;
+  margin: 0 auto;
+}
+
+.ending-combine-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 16px;
+  aspect-ratio: 1080 / 602;
+  object-fit: cover;
+}
+
+/* Final CTA Box */
+.ending-cta-box {
+  width: 100%;
+  max-width: 820px;
+  background: linear-gradient(135deg, rgba(46, 30, 27, 0.85) 0%, rgba(32, 20, 18, 0.95) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 32px;
+  padding: 44px 36px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  box-shadow: 
+    0 20px 60px rgba(0, 0, 0, 0.6),
+    0 0 35px rgba(215, 183, 166, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.cta-box-title {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: clamp(24px, 3.2vw, 32px);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.cta-box-text {
+  font-size: 16px;
+  color: #d9cac7;
+  margin: 0 0 8px 0;
+}
+
+.landing-cta-btn-large {
+  padding: 14px 34px;
+  font-size: 17px;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   10. FOOTER
+   ========================================================================== */
+.landing-footer {
+  position: relative;
+  z-index: 10;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(18, 11, 10, 0.9);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding: 24px;
+}
+
+.landing-footer-inner {
+  max-width: 1340px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.footer-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.footer-brand {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.footer-copyright {
+  font-size: 13.5px;
+  color: #9f8c88;
+}
+
+.footer-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.footer-links button {
+  background: none;
+  border: none;
+  color: #d9cac7;
+  font-size: 13.5px;
+  cursor: pointer;
+  padding: 4px;
+  transition: color 0.2s ease;
+}
+
+.footer-links button:hover {
+  color: #ffffff;
+}
+
+.footer-bullet {
+  color: rgba(255, 255, 255, 0.2);
+  font-size: 12px;
+}
+
+/* ==========================================================================
+   11. SCROLL-TRIGGERED ANIMATIONS
+   (Transition duration increased to 1.8s for smooth cinematic gliding)
+   (Replays continuously on every scroll)
+   ========================================================================== */
+.scroll-reveal {
+  opacity: 0;
+  will-change: transform, opacity;
+  transition: opacity 1.8s cubic-bezier(0.16, 1, 0.3, 1), transform 1.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Animation 1: Fade In Up */
+.anim-fade-in-up {
+  transform: translateY(55px);
+}
+
+.anim-fade-in-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Animation 2: Slide In Up */
+.anim-slide-in-up {
+  transform: translateY(70px);
+}
+
+.anim-slide-in-up.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Animation 3: Slide In From Left (Opposite Transition) */
+.anim-slide-in-left {
+  transform: translateX(-100px);
+}
+
+.anim-slide-in-left.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* Animation 4: Slide In From Right (Opposite Transition) */
+.anim-slide-in-right {
+  transform: translateX(100px);
+}
+
+.anim-slide-in-right.is-visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* ==========================================================================
+   12. FROSTED DIALOG MODALS (Contact Us, Privacy Policy, About Us)
+   ========================================================================== */
+.landing-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 2000;
+  background: rgba(12, 7, 6, 0.78);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  animation: modalFadeIn 0.25s ease-out;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.landing-modal-card {
+  position: relative;
+  width: 100%;
+  max-width: 540px;
+  background: linear-gradient(145deg, rgba(46, 30, 27, 0.94) 0%, rgba(28, 18, 16, 0.98) 100%);
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 28px;
+  padding: 36px 32px;
+  box-shadow: 
+    0 24px 64px rgba(0, 0, 0, 0.75),
+    0 0 32px rgba(215, 183, 166, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.35);
+  animation: modalScaleUp 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalScaleUp {
+  from { transform: scale(0.92); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 18px;
+  right: 18px;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  transform: scale(1.08);
+}
+
+.modal-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 16px;
+}
+
+.modal-icon-badge {
+  font-size: 32px;
+  width: 60px;
+  height: 60px;
+  border-radius: 20px;
+  background: rgba(215, 183, 166, 0.15);
+  border: 1px solid rgba(215, 183, 166, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+.modal-title {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: 26px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+}
+
+.modal-body-text {
+  font-size: 15px;
+  line-height: 1.6;
+  color: #d9cac7;
+  margin: 0;
+}
+
+.contact-details-box {
+  width: 100%;
+  background: rgba(20, 12, 11, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 18px;
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  text-align: left;
+}
+
+.contact-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+}
+
+.contact-label {
+  color: #bfaaa5;
+}
+
+.contact-val {
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+a.contact-val:hover {
+  text-decoration: underline;
+  color: #e6c4b4;
+}
+
+.modal-scrollable-body {
+  max-height: 260px;
+  overflow-y: auto;
+  text-align: left;
+  padding-right: 6px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: #d8c7c3;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-scrollable-body strong {
+  color: #ffffff;
+}
+
+.modal-primary-btn {
+  width: 100%;
+  padding: 12px;
+  margin-top: 8px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #7a544c 0%, #60433d 100%);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #ffffff;
+  font-family: 'Outfit', sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+  transition: all 0.2s ease;
+}
+
+.modal-primary-btn:hover {
+  background: linear-gradient(135deg, #8a6057 0%, #6d4c45 100%);
+  transform: translateY(-1px);
+}
+
+/* ==========================================================================
+   13. RESPONSIVE BREAKPOINTS (Item 3: Never cut navbar on any screen)
+   ========================================================================== */
+@media (max-width: 1100px) {
+  .landing-navbar-inner {
+    padding: 10px 18px;
+    gap: 12px;
+  }
+
+  .landing-brand-name {
+    font-size: 19px;
+  }
+
+  .landing-cta-btn {
+    padding: 8px 16px;
+    font-size: 13.5px;
+  }
+
+  .landing-nav-item {
+    font-size: 13.5px;
+    padding: 6px 10px;
+  }
+
+  .landing-feature-compiler .landing-compiler-grid {
+    grid-template-columns: 1.3fr 1fr;
+    gap: 36px;
+  }
+}
+
+@media (max-width: 992px) {
+  .landing-feature-grid,
+  .landing-feature-reversed .landing-feature-grid,
+  .landing-feature-compiler .landing-compiler-grid {
+    grid-template-columns: 1fr;
+    gap: 36px;
+  }
+
+  .landing-feature-reversed .landing-feature-media,
+  .landing-feature-compiler .compiler-media-container {
+    order: 2;
+  }
+
+  .landing-feature-reversed .landing-feature-text,
+  .landing-feature-compiler .landing-feature-text {
+    order: 1;
+  }
+
+  .landing-main-content {
+    gap: 80px;
+    padding: 95px 18px 80px 18px;
+  }
+}
+
+@media (max-width: 768px) {
+  .landing-navbar-inner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 12px;
+    padding: 10px 16px;
+  }
+
+  .landing-brand-group {
+    justify-content: space-between;
+    width: 100%;
+  }
+
+  .landing-nav-links {
+    justify-content: space-between;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    gap: 6px;
+  }
+
+  .landing-cta-btn {
+    padding: 7px 14px;
+    font-size: 13px;
+  }
+
+  .landing-nav-item {
+    font-size: 13px;
+    padding: 6px 8px;
+  }
+
+  .landing-user-badge {
+    padding: 4px 10px 4px 4px;
+    gap: 6px;
+  }
+
+  .landing-user-avatar {
+    width: 26px;
+    height: 26px;
+  }
+
+  .landing-user-name {
+    font-size: 12px;
+  }
+
+  .landing-hero-desc-wrapper {
+    padding: 22px 20px;
+  }
+
+  .ending-cta-box {
+    padding: 32px 20px;
+  }
+
+  .landing-footer-inner {
+    flex-direction: column;
+    text-align: center;
+  }
+}

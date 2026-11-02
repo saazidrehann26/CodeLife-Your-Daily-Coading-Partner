@@ -1,0 +1,878 @@
+/* ==========================================================================
+   DAILY CODE PRACTICE - EMBOSSED LOGIN PAGE
+   Primary Tone: #60433D with Pure White Backlit Glow
+   ========================================================================== */
+
+:root {
+  --base-brown: #60433D;
+  --base-brown-light: #73514a;
+  --base-brown-lighter: #876057;
+  --base-brown-dark: #4b342f;
+  --base-brown-darker: #362522;
+  --base-brown-deep: #251816;
+  
+  --white-pure: #ffffff;
+  --white-backlight-soft: rgba(255, 255, 255, 0.16);
+  --white-backlight-high: rgba(255, 255, 255, 0.28);
+  --white-backlight-vivid: rgba(255, 255, 255, 0.45);
+  
+  --text-main: #fcf9f8;
+  --text-muted: #d9cac7;
+  --text-faint: #b39f9b;
+  
+  --card-radius: 42px;
+  --pill-radius: 9999px;
+  --input-radius: 18px;
+  
+  --font-heading: 'Bell MT', 'Bell', 'Georgia', 'Baskerville', 'Times New Roman', serif;
+}
+
+/* Page Viewport & Background */
+.login-page-wrapper {
+  --backlight-core: rgba(255, 255, 255, 0.28);
+  --backlight-spread: rgba(255, 255, 255, 0.14);
+  --backlight-blur: 65px;
+  
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background-color: #180f0e;
+  background-image: url('/log_in_page_bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  position: relative;
+  padding: 30px 16px;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  color: var(--text-main);
+}
+
+/* Dedicated Fixed Background Layer for Aspect Ratio & Mobile Viewport Stability */
+.login-page-bg {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  height: 100dvh;
+  background-image: url('/log_in_page_bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Gentle Center Vignette to Maximize Contrast and Pop for the Embossed Card & White Halo */
+.login-page-bg::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at 50% 45%, rgba(24, 15, 14, 0.22) 0%, rgba(20, 12, 11, 0.55) 100%);
+  pointer-events: none;
+}
+
+/* Atmospheric Ambient Glows */
+.ambient-glow {
+  position: absolute;
+  pointer-events: none;
+  border-radius: 50%;
+  filter: blur(100px);
+  z-index: 1;
+}
+
+.ambient-glow-1 {
+  width: 480px;
+  height: 480px;
+  top: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: radial-gradient(circle, rgba(255, 255, 255, 0.12) 0%, rgba(96, 67, 61, 0.35) 60%, transparent 80%);
+}
+
+.ambient-glow-2 {
+  width: 320px;
+  height: 320px;
+  bottom: 5%;
+  background: radial-gradient(circle, rgba(96, 67, 61, 0.5) 0%, transparent 70%);
+}
+
+/* Outer Backlit White Halo Container */
+.card-outer-halo {
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  max-width: 500px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 10px 0;
+}
+
+/* The White Backlight Aura behind the frame */
+.card-outer-halo::before {
+  content: '';
+  position: absolute;
+  inset: -14px;
+  border-radius: 52px;
+  background: radial-gradient(ellipse at 50% 45%, var(--backlight-core) 0%, var(--backlight-spread) 60%, transparent 75%);
+  filter: blur(var(--backlight-blur));
+  pointer-events: none;
+  z-index: -1;
+  transition: filter 0.4s ease, background 0.4s ease;
+}
+
+/* Additional sharp white rim aura */
+.card-outer-halo::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 46px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.38) 0%, rgba(255, 255, 255, 0.04) 40%, rgba(255, 255, 255, 0.18) 100%);
+  filter: blur(5px);
+  pointer-events: none;
+  z-index: -1;
+}
+
+/* ==========================================================================
+   SPHERICAL EMBOSSED FRAME
+   ========================================================================== */
+.spherical-card-frame {
+  width: 100%;
+  padding: 8px;
+  border-radius: var(--card-radius);
+  
+  /* Convex Outer Spherical Bevel */
+  background: linear-gradient(145deg, 
+    #7a564e 0%, 
+    #60433d 30%, 
+    #533934 70%, 
+    #3f2a26 100%
+  );
+  
+  /* Multi-level 3D Emboss & White Rim Backlight */
+  box-shadow: 
+    /* Pure white backlight perimeter glow */
+    0 0 35px 2px var(--backlight-core),
+    /* Deep ambient elevation shadow */
+    0 25px 65px rgba(0, 0, 0, 0.7),
+    0 12px 25px rgba(18, 11, 10, 0.8),
+    /* Embossed outer light reflection (top-left) */
+    inset 2.5px 2.5px 4px rgba(255, 255, 255, 0.45),
+    /* Embossed outer dark shade (bottom-right) */
+    inset -3.5px -3.5px 6px rgba(0, 0, 0, 0.55);
+    
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+/* Inner Embossed Card Surface */
+.embossed-inner-card {
+  position: relative;
+  background: linear-gradient(160deg, 
+    #674842 0%, 
+    #60433D 35%, 
+    #583d37 75%, 
+    #4e3530 100%
+  );
+  border-radius: 36px;
+  padding: 26px 30px 24px 30px;
+  
+  /* Inner bevel and surface contour */
+  box-shadow: 
+    inset 2px 2px 3px rgba(255, 255, 255, 0.28),
+    inset -2px -2px 4px rgba(0, 0, 0, 0.42),
+    0 4px 12px rgba(0, 0, 0, 0.25);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Subtle spherical highlight reflection overlay */
+.embossed-inner-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 20px;
+  right: 20px;
+  height: 55px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.16) 0%, rgba(255, 255, 255, 0) 100%);
+  border-radius: 36px 36px 100px 100px;
+  pointer-events: none;
+}
+
+/* Mode Toggle Pills (Sign In / Sign Up) */
+.mode-toggle-pills {
+  display: flex;
+  align-items: center;
+  background: #482f2a;
+  padding: 4px;
+  border-radius: var(--pill-radius);
+  margin-bottom: 18px;
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 
+    inset 2px 2px 4px rgba(0, 0, 0, 0.5),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.1),
+    0 1px 2px rgba(255, 255, 255, 0.08);
+}
+
+.mode-pill-btn {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  padding: 6px 18px;
+  border-radius: var(--pill-radius);
+  cursor: pointer;
+  transition: all 0.22s ease;
+}
+
+.mode-pill-btn:hover {
+  color: var(--white-pure);
+}
+
+.mode-pill-btn.active {
+  background: linear-gradient(145deg, #78534b, #5e3f39);
+  color: var(--white-pure);
+  box-shadow: 
+    0 0 12px rgba(255, 255, 255, 0.25),
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.4),
+    inset -1px -1px 2px rgba(0, 0, 0, 0.4);
+}
+
+/* ==========================================================================
+   LOGO SECTION
+   ========================================================================== */
+.logo-section {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.embossed-logo-badge {
+  position: relative;
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  cursor: pointer;
+  
+  /* Raised spherical embossed button */
+  background: radial-gradient(circle at 35% 30%, #7d5850 0%, #60433D 55%, #462f2a 100%);
+  box-shadow: 
+    /* White backlit aura around logo */
+    0 0 22px rgba(255, 255, 255, 0.35),
+    0 10px 20px rgba(0, 0, 0, 0.45),
+    /* Top-left light catch */
+    inset 2px 2px 3px rgba(255, 255, 255, 0.5),
+    /* Bottom-right recessed shadow */
+    inset -3px -3px 5px rgba(0, 0, 0, 0.5);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.embossed-logo-badge:hover {
+  transform: translateY(-2px) scale(1.04);
+  box-shadow: 
+    0 0 32px rgba(255, 255, 255, 0.55),
+    0 14px 24px rgba(0, 0, 0, 0.5),
+    inset 2.5px 2.5px 4px rgba(255, 255, 255, 0.65),
+    inset -3px -3px 5px rgba(0, 0, 0, 0.5);
+}
+
+.logo-inner-sphere {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: #ffffff;
+  box-shadow: 
+    inset 0 1px 3px rgba(0, 0, 0, 0.22),
+    0 2px 6px rgba(0, 0, 0, 0.25);
+}
+
+.logo-icon, .logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  background-color: #ffffff;
+  transition: transform 0.25s ease;
+}
+
+.embossed-logo-badge:hover .logo-img {
+  transform: scale(1.06);
+}
+
+.brand-pill {
+  margin-top: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 2px;
+  color: var(--white-pure);
+  text-transform: uppercase;
+  background: rgba(56, 38, 34, 0.75);
+  padding: 4px 16px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 1px 1px 2px rgba(0, 0, 0, 0.4), 0 0 10px rgba(255, 255, 255, 0.08);
+}
+
+/* ==========================================================================
+   GREETING & MESSAGE
+   ========================================================================== */
+.greeting-section {
+  text-align: center;
+  margin-bottom: 18px;
+  width: 100%;
+}
+
+.main-message {
+  margin: 0 0 4px 0;
+  font-family: var(--font-heading, 'Bell MT', 'Bell', 'Georgia', serif);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.25px;
+  color: var(--white-pure);
+  /* Embossed Text Shadow Effect */
+  text-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.3),
+    0 -1px 0 rgba(0, 0, 0, 0.5),
+    0 0 18px rgba(255, 255, 255, 0.35);
+}
+
+.sub-message {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 400;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+/* Toast alert */
+.toast-alert {
+  width: 100%;
+  padding: 9px 13px;
+  border-radius: 12px;
+  font-size: 12.5px;
+  font-weight: 500;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: fadeIn 0.3s ease;
+  box-sizing: border-box;
+}
+
+.toast-success {
+  background: rgba(38, 70, 52, 0.85);
+  border: 1px solid rgba(110, 231, 183, 0.4);
+  color: #d1fae5;
+  box-shadow: 0 0 15px rgba(110, 231, 183, 0.2);
+}
+
+.toast-error {
+  background: rgba(85, 26, 26, 0.85);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fee2e2;
+  box-shadow: 0 0 15px rgba(248, 113, 113, 0.2);
+}
+
+.toast-info {
+  background: rgba(36, 52, 85, 0.85);
+  border: 1px solid rgba(147, 197, 253, 0.4);
+  color: #dbeafe;
+  box-shadow: 0 0 15px rgba(147, 197, 253, 0.2);
+}
+
+.toast-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   FORM & DEBOSSED INPUTS
+   ========================================================================== */
+.auth-form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 11px;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.field-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #f1e7e5;
+  letter-spacing: 0.2px;
+  /* Soft embossed text relief */
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.5), 0 0 8px rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+}
+
+/* Debossed (recessed / pressed-in) Input Container */
+.embossed-input-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 46px;
+  border-radius: var(--input-radius);
+  
+  /* Darker recessed cavity matching #60433D */
+  background: #503631;
+  
+  /* Debossed Neumorphic Cavity Shadows */
+  box-shadow: 
+    inset 3px 3px 6px rgba(0, 0, 0, 0.55),
+    inset 1px 1px 3px rgba(0, 0, 0, 0.4),
+    inset -1.5px -1.5px 3px rgba(255, 255, 255, 0.12),
+    0 1px 2px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  transition: all 0.25s ease;
+  box-sizing: border-box;
+}
+
+.embossed-input-container:focus-within {
+  /* Backlit white halo on focus */
+  border-color: rgba(255, 255, 255, 0.45);
+  box-shadow: 
+    inset 2.5px 2.5px 5px rgba(0, 0, 0, 0.6),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.2),
+    0 0 18px rgba(255, 255, 255, 0.32),
+    0 0 0 1.5px rgba(255, 255, 255, 0.35);
+}
+
+.input-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 16px;
+  color: var(--text-faint);
+  pointer-events: none;
+}
+
+.embossed-input {
+  flex: 1;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0 14px;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--white-pure);
+  box-sizing: border-box;
+}
+
+/* Fix browser autofill from turning inputs white */
+.embossed-input:-webkit-autofill,
+.embossed-input:-webkit-autofill:hover,
+.embossed-input:-webkit-autofill:focus,
+.embossed-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #503631 inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 50000s ease-in-out 0s;
+  border-radius: 12px;
+}
+
+.embossed-input::placeholder {
+  color: #a48c87;
+  font-size: 13.5px;
+  font-weight: 400;
+}
+
+/* Clear & Toggle buttons */
+.clear-btn, .toggle-pw-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  padding: 8px 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  transition: color 0.2s ease;
+}
+
+.clear-btn:hover, .toggle-pw-btn:hover {
+  color: var(--white-pure);
+}
+
+/* ==========================================================================
+   OPTIONS ROW: REMEMBER ME & FORGOT PASSWORD
+   ========================================================================== */
+.options-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+  margin-bottom: 6px;
+  width: 100%;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.embossed-checkbox-wrapper {
+  position: relative;
+  width: 20px;
+  height: 20px;
+}
+
+.embossed-checkbox-wrapper input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+/* Embossed Checkbox Frame */
+.embossed-checkbox-custom {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  background: #503631;
+  box-shadow: 
+    inset 2px 2px 4px rgba(0, 0, 0, 0.5),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.12),
+    0 1px 2px rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+}
+
+.check-icon {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: all 0.2s ease;
+}
+
+.embossed-checkbox-wrapper input:checked + .embossed-checkbox-custom {
+  background: #73514a;
+  box-shadow: 
+    0 0 10px rgba(255, 255, 255, 0.35),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.4),
+    inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.4);
+}
+
+.embossed-checkbox-wrapper input:checked + .embossed-checkbox-custom .check-icon {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.checkbox-text {
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #ecdcd9;
+}
+
+.forgot-password-link {
+  background: transparent;
+  border: none;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 500;
+  color: #f1c5bc;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.forgot-password-link:hover {
+  color: var(--white-pure);
+  text-shadow: 0 0 8px rgba(255, 255, 255, 0.45);
+}
+
+/* ==========================================================================
+   SIGN IN BUTTON (EMBOSSED 3D ELEVATION WITH WHITE BACKLIGHT)
+   ========================================================================== */
+.embossed-submit-btn {
+  position: relative;
+  width: 100%;
+  height: 48px;
+  margin-top: 4px;
+  border-radius: var(--pill-radius);
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  
+  /* Primary #60433D with raised 3D gradient */
+  background: linear-gradient(145deg, 
+    #7a564e 0%, 
+    #684943 40%, 
+    #5a3e38 80%, 
+    #4a322d 100%
+  );
+  
+  color: var(--white-pure);
+  font-family: inherit;
+  font-size: 16.5px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  
+  /* 3D Embossed Convex Shadow + White Backlight Glow */
+  box-shadow: 
+    /* White Backlit Glow under button */
+    0 0 24px rgba(255, 255, 255, 0.32),
+    0 10px 22px rgba(0, 0, 0, 0.5),
+    /* Top-left sharp specular edge highlight */
+    inset 2px 2px 3px rgba(255, 255, 255, 0.55),
+    /* Bottom-right shadow bevel */
+    inset -3px -3px 5px rgba(0, 0, 0, 0.55);
+    
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+}
+
+/* White backlight beam sweep on hover */
+.btn-backlit-beam {
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.25), transparent);
+  transform: skewX(-25deg);
+  transition: left 0.6s ease;
+  pointer-events: none;
+}
+
+.embossed-submit-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 
+    0 0 36px rgba(255, 255, 255, 0.48),
+    0 14px 28px rgba(0, 0, 0, 0.55),
+    inset 2px 2px 4px rgba(255, 255, 255, 0.7),
+    inset -3px -3px 5px rgba(0, 0, 0, 0.55);
+}
+
+.embossed-submit-btn:hover .btn-backlit-beam {
+  left: 140%;
+}
+
+.embossed-submit-btn:active {
+  transform: translateY(1px);
+  /* Pressed-in debossed state */
+  box-shadow: 
+    0 0 14px rgba(255, 255, 255, 0.2),
+    0 4px 10px rgba(0, 0, 0, 0.4),
+    inset 3px 3px 6px rgba(0, 0, 0, 0.6),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.2);
+}
+
+.btn-arrow {
+  transition: transform 0.2s ease;
+}
+
+.embossed-submit-btn:hover .btn-arrow {
+  transform: translateX(3px);
+}
+
+/* ==========================================================================
+   FOOTER (DON'T HAVE AN ACCOUNT & SIGN UP)
+   ========================================================================== */
+.auth-footer {
+  margin-top: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  flex-wrap: wrap;
+}
+
+.footer-prompt {
+  font-size: 14px;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.embossed-secondary-btn {
+  background: linear-gradient(145deg, #6c4b44, #533934);
+  color: var(--white-pure);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: var(--pill-radius);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  cursor: pointer;
+  
+  /* Embossed pill */
+  box-shadow: 
+    0 0 12px rgba(255, 255, 255, 0.18),
+    0 4px 10px rgba(0, 0, 0, 0.35),
+    inset 1.5px 1.5px 2px rgba(255, 255, 255, 0.35),
+    inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.4);
+  transition: all 0.22s ease;
+}
+
+.embossed-secondary-btn:hover {
+  background: linear-gradient(145deg, #78544c, #5c3f39);
+  box-shadow: 
+    0 0 20px rgba(255, 255, 255, 0.32),
+    0 6px 14px rgba(0, 0, 0, 0.4),
+    inset 2px 2px 3px rgba(255, 255, 255, 0.5),
+    inset -2px -2px 3px rgba(0, 0, 0, 0.4);
+  transform: translateY(-1px);
+}
+
+.embossed-secondary-btn:active {
+  transform: translateY(1px);
+  box-shadow: 
+    inset 2px 2px 4px rgba(0, 0, 0, 0.5),
+    inset -1px -1px 2px rgba(255, 255, 255, 0.15);
+}
+
+/* Daily streak tagline */
+.daily-streak-hint {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: #bfaca8;
+  opacity: 0.85;
+}
+
+.streak-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #ffb4a2;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Responsive adjustments */
+@media (max-width: 520px) {
+  .login-page-wrapper {
+    padding: 20px 12px;
+  }
+  
+  .embossed-inner-card {
+    padding: 32px 20px 28px 20px;
+    border-radius: 30px;
+  }
+  
+  .spherical-card-frame {
+    border-radius: 34px;
+    padding: 6px;
+  }
+  
+  .main-message {
+    font-size: 23px;
+  }
+  
+  .options-row {
+    flex-direction: row;
+    gap: 8px;
+  }
+  
+  .checkbox-text, .forgot-password-link {
+    font-size: 12.5px;
+  }
+}
+
+/* Quick Navigation: Return to Home/Intro Page */
+.back-to-landing-btn {
+  position: fixed;
+  top: 26px;
+  right: 32px;
+  z-index: 50;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  background: rgba(46, 31, 28, 0.75);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  color: #e8dedb;
+  font-family: 'Outfit', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  user-select: none;
+}
+
+.back-to-landing-btn:hover {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.45);
+  transform: translateY(-2px);
+  background: rgba(62, 42, 38, 0.9);
+  box-shadow: 
+    0 8px 24px rgba(0, 0, 0, 0.55),
+    0 0 16px rgba(255, 255, 255, 0.15);
+}
+
+@media (max-width: 520px) {
+  .back-to-landing-btn {
+    top: 16px;
+    right: 16px;
+    padding: 6px 14px;
+    font-size: 13px;
+  }
+}

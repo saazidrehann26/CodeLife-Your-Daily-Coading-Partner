@@ -1,0 +1,373 @@
+/**
+ * CodeCompilerViewer.css
+ * Standard IDE / Compiler View Styles
+ * - High-contrast obsidian cocoa compiler frame
+ * - Left gutter with non-selectable line numbers for every line
+ * - Window control dots & compiler status bar
+ * - High-contrast syntax tokens with pure white font foundation
+ */
+
+.compiler-frame {
+  width: 100%;
+  background: #100a09;
+  border: 1px solid rgba(225, 175, 155, 0.25);
+  border-radius: 14px;
+  overflow: hidden;
+  box-shadow: 
+    0 10px 30px rgba(0, 0, 0, 0.6),
+    inset 0 1px 1px rgba(255, 255, 255, 0.12);
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+}
+
+/* ==========================================================================
+   1. COMPILER TITLEBAR & TABS
+   ========================================================================== */
+.compiler-titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(38, 22, 19, 0.98) 0%, rgba(26, 15, 13, 0.95) 100%);
+  border-bottom: 1px solid rgba(225, 175, 155, 0.2);
+  padding: 8px 14px;
+  min-height: 40px;
+  gap: 12px;
+  flex-wrap: wrap;
+  box-sizing: border-box;
+}
+
+.compiler-titlebar-left {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+/* Mac/IDE Window Controls */
+.compiler-dots-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.compiler-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35);
+}
+
+.dot-close {
+  background: #ff5f56;
+  border: 1px solid #e0443e;
+}
+
+.dot-minimize {
+  background: #ffbd2e;
+  border: 1px solid #dea123;
+}
+
+.dot-expand {
+  background: #27c93f;
+  border: 1px solid #1aab29;
+}
+
+/* Tabs Container */
+.compiler-tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.compiler-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: #ffffff;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.compiler-tab-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.compiler-tab-btn.active {
+  background: linear-gradient(145deg, #5a3831 0%, #3e2420 100%);
+  border-color: rgba(230, 196, 180, 0.45);
+  color: #ffffff;
+  box-shadow: 
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3);
+}
+
+.compiler-tab-glyph {
+  font-size: 13px;
+  line-height: 1;
+}
+
+.compiler-tab-label {
+  color: #ffffff;
+  letter-spacing: 0.2px;
+}
+
+/* Single File Tab */
+.compiler-file-tab {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(225, 175, 155, 0.2);
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.compiler-file-label {
+  color: #ffffff;
+}
+
+/* Titlebar Right */
+.compiler-titlebar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.compiler-meta-badge {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  padding: 3px 10px;
+  border-radius: 9999px;
+  letter-spacing: 0.3px;
+  white-space: nowrap;
+}
+
+.compiler-copy-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: linear-gradient(145deg, #4f332d 0%, #351f1b 100%);
+  border: 1px solid rgba(225, 175, 155, 0.3);
+  color: #ffffff;
+  padding: 5px 12px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 
+    0 2px 6px rgba(0, 0, 0, 0.4),
+    inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.compiler-copy-btn:hover {
+  background: linear-gradient(145deg, #643f38 0%, #462823 100%);
+  border-color: rgba(230, 196, 180, 0.55);
+  transform: translateY(-1px);
+}
+
+.compiler-copy-btn:active {
+  transform: translateY(0);
+}
+
+/* ==========================================================================
+   2. COMPILER CODE VIEWPORT & TABLE (LINE NUMBERS GUTTER)
+   ========================================================================== */
+.compiler-code-viewport {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  background: #0d0706;
+  box-sizing: border-box;
+}
+
+/* Custom scrollbars */
+.compiler-code-viewport::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.compiler-code-viewport::-webkit-scrollbar-track {
+  background: rgba(15, 9, 8, 0.9);
+}
+
+.compiler-code-viewport::-webkit-scrollbar-thumb {
+  background: rgba(225, 175, 155, 0.3);
+  border-radius: 4px;
+}
+
+.compiler-code-viewport::-webkit-scrollbar-thumb:hover {
+  background: rgba(225, 175, 155, 0.5);
+}
+
+.compiler-code-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'JetBrains Mono', Consolas, 'Courier New', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.compiler-line-row {
+  transition: background-color 0.1s ease;
+}
+
+.compiler-line-row:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* Gutter Column: Every Line Number */
+.compiler-gutter-col {
+  width: 48px;
+  min-width: 48px;
+  max-width: 60px;
+  text-align: right;
+  padding: 1px 12px 1px 10px;
+  background: rgba(18, 10, 9, 0.95);
+  border-right: 1px solid rgba(225, 175, 155, 0.18);
+  user-select: none;
+  -webkit-user-select: none;
+  vertical-align: top;
+  box-sizing: border-box;
+}
+
+.compiler-line-num {
+  font-size: 12px;
+  font-weight: 500;
+  color: #ffffff;
+  opacity: 0.55;
+  display: block;
+}
+
+.compiler-line-row:hover .compiler-line-num {
+  opacity: 1;
+  color: #ffffff;
+  font-weight: 700;
+}
+
+/* Content Column */
+.compiler-content-col {
+  padding: 1px 16px 1px 14px;
+  text-align: left;
+  vertical-align: top;
+  white-space: pre;
+  color: #ffffff;
+}
+
+.compiler-code-pre {
+  margin: 0;
+  padding: 0;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  white-space: pre;
+  tab-size: 4;
+  -moz-tab-size: 4;
+  color: #ffffff;
+}
+
+.compiler-code-pre code {
+  font-family: inherit;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   3. SYNTAX HIGHLIGHTING TOKENS (HIGH CONTRAST)
+   ========================================================================== */
+.tok-kw {
+  color: #ff7b72;
+  font-weight: 600;
+}
+
+.tok-str {
+  color: #a5d6ff;
+}
+
+.tok-num {
+  color: #79c0ff;
+  font-weight: 600;
+}
+
+.tok-fn {
+  color: #d2a8ff;
+}
+
+.tok-comm {
+  color: rgba(255, 255, 255, 0.65);
+  font-style: italic;
+}
+
+.tok-plain {
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   4. COMPILER STATUS BAR
+   ========================================================================== */
+.compiler-statusbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(20, 11, 10, 0.95);
+  border-top: 1px solid rgba(225, 175, 155, 0.18);
+  padding: 5px 14px;
+  font-size: 11px;
+  color: #ffffff;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.compiler-status-left {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.compiler-status-beacon {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #27c93f;
+  box-shadow: 0 0 8px rgba(39, 201, 63, 0.8);
+  display: inline-block;
+}
+
+.compiler-status-text {
+  color: #ffffff;
+  letter-spacing: 0.3px;
+}
+
+.compiler-status-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+  opacity: 0.9;
+  font-weight: 500;
+}
+
+.status-sep {
+  opacity: 0.35;
+  color: #ffffff;
+}

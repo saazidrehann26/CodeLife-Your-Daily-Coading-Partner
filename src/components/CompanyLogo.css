@@ -1,0 +1,129 @@
+/* ==========================================================================
+   COMPANY LOGO STYLES
+   Ensures perfect aspect ratio (2.289:1) and high-contrast tactile visibility
+   against the deep cocoa #60433D background and circuit board artwork.
+   ========================================================================== */
+
+.company-logo-container {
+  position: fixed;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+  pointer-events: auto;
+}
+
+/* 1. Standard Top-Left Corporate Placement */
+.company-logo-container.company-logo-top-left {
+  top: 26px;
+  left: 32px;
+}
+
+/* 2. Top-Right Placement */
+.company-logo-container.company-logo-top-right {
+  top: 26px;
+  right: 32px;
+}
+
+/* 3. Centered Above Card Placement */
+.company-logo-container.company-logo-above-card {
+  position: relative;
+  top: auto;
+  left: auto;
+  right: auto;
+  margin: 0 auto 18px auto;
+  justify-content: center;
+}
+
+/* 4. Bottom Center Placement */
+.company-logo-container.company-logo-bottom-center {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  top: auto;
+}
+
+/* 5. Static / Inline Placement (for Navbars & Headers) */
+.company-logo-container.company-logo-static {
+  position: static;
+  top: auto;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  z-index: auto;
+}
+
+/* Tactile Frosted Glass & Neumorphic Embossed Capsule */
+.company-logo-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  background: rgba(46, 31, 28, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  box-shadow: 
+    0 6px 20px rgba(0, 0, 0, 0.45),
+    0 0 22px 2px rgba(255, 255, 255, 0.14),
+    inset 0 1px 1px rgba(255, 255, 255, 0.25);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  cursor: pointer;
+  user-select: none;
+}
+
+.company-logo-badge:hover {
+  transform: translateY(-2px) scale(1.02);
+  background: rgba(58, 39, 35, 0.82);
+  border-color: rgba(255, 255, 255, 0.38);
+  box-shadow: 
+    0 8px 28px rgba(0, 0, 0, 0.55),
+    0 0 30px 4px rgba(255, 255, 255, 0.22),
+    inset 0 1px 1px rgba(255, 255, 255, 0.4);
+}
+
+/* Logo Image — Strictly Preserving Aspect Ratio */
+.company-logo-img {
+  height: 38px;
+  width: auto;
+  max-width: 175px;
+  aspect-ratio: 586 / 256;
+  object-fit: contain;
+  display: block;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.4));
+}
+
+/* Mobile & Tablet Responsiveness */
+@media (max-width: 768px) {
+  .company-logo-container.company-logo-top-left {
+    top: 16px;
+    left: 16px;
+  }
+  
+  .company-logo-container.company-logo-top-right {
+    top: 16px;
+    right: 16px;
+  }
+  
+  .company-logo-badge {
+    padding: 6px 14px;
+  }
+  
+  .company-logo-img {
+    height: 30px;
+    max-width: 135px;
+  }
+}
+
+@media (max-width: 480px) {
+  .company-logo-img {
+    height: 26px;
+    max-width: 120px;
+  }
+  
+  .company-logo-badge {
+    padding: 5px 12px;
+  }
+}

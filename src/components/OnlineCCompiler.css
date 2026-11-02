@@ -1,0 +1,476 @@
+/* ==========================================================================
+   ONLINE C COMPILER (MONACO EDITOR & JUDGE0) STYLES
+   ========================================================================== */
+
+.c-compiler-container {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  width: 100%;
+}
+
+.c-compiler-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.c-compiler-header-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.c-compiler-brand-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.c-compiler-logo-img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+}
+
+.c-compiler-title {
+  margin: 0;
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* Monaco Window */
+.c-editor-window {
+  border: 1px solid rgba(225, 175, 155, 0.25);
+  border-radius: 12px;
+  overflow: hidden;
+  background: #1e1e1e;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+}
+
+.c-editor-window-titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #252526;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px 12px;
+}
+
+.c-editor-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.c-editor-file-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #1e1e1e;
+  color: #ffffff;
+  padding: 4px 12px;
+  border-radius: 4px 4px 0 0;
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.c-tab-icon {
+  width: 14px;
+  height: 14px;
+  object-fit: contain;
+}
+
+.c-editor-copy-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.c-editor-copy-btn:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.c-monaco-wrapper {
+  width: 100%;
+}
+
+/* Toolbar */
+.c-compiler-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.c-compiler-toolbar-left,
+.c-compiler-toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Unified sizing for all compiler toolbar action buttons (Run Code, Save to Code Store, Close) */
+.c-compiler-toolbar .spherical-btn,
+.c-toolbar-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 0 18px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  line-height: 38px !important;
+  box-sizing: border-box !important;
+  border-radius: 9999px !important;
+  white-space: nowrap !important;
+  letter-spacing: 0.3px !important;
+  user-select: none !important;
+  text-decoration: none !important;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+/* Proportional visual balance for toolbar buttons */
+.c-compiler-toolbar-right .spherical-btn {
+  min-width: 90px;
+}
+
+.c-run-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  height: 38px !important;
+  min-height: 38px !important;
+  max-height: 38px !important;
+  padding: 0 18px !important;
+  font-size: 13.5px !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 16px rgba(124, 65, 53, 0.6) !important;
+}
+
+.c-run-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.c-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  display: inline-block;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ==========================================================================
+   XTERM.JS TERMINAL PANEL (SINGLE UNIFIED IN-TERMINAL INPUT & OUTPUT)
+   ========================================================================== */
+.c-xterm-terminal-panel {
+  display: flex;
+  flex-direction: column;
+  background: #0c0706;
+  border: 1px solid rgba(225, 175, 155, 0.35);
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.55), inset 0 1px 2px rgba(255, 255, 255, 0.05);
+  margin-top: 6px;
+}
+
+.c-xterm-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 14px;
+  background: rgba(30, 18, 16, 0.75);
+  border-bottom: 1px solid rgba(225, 175, 155, 0.18);
+}
+
+.c-xterm-header-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ffffff;
+}
+
+.c-xterm-title {
+  font-family: 'JetBrains Mono', Consolas, monospace;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.c-xterm-live-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #81c784;
+  background: rgba(76, 175, 80, 0.2);
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  padding: 1px 7px;
+  border-radius: 4px;
+  letter-spacing: 0.3px;
+  animation: pulse-live 1.8s infinite;
+}
+
+@keyframes pulse-live {
+  0% { opacity: 0.7; }
+  50% { opacity: 1; }
+  100% { opacity: 0.7; }
+}
+
+.c-xterm-canvas-wrapper {
+  padding: 10px 12px;
+  min-height: 190px;
+  background: #0c0706;
+  cursor: text;
+}
+
+.c-xterm-canvas-wrapper .xterm {
+  height: 100%;
+}
+
+.c-xterm-canvas-wrapper .xterm-viewport {
+  background-color: #0c0706 !important;
+}
+
+.c-xterm-footnote {
+  padding: 6px 14px;
+  background: rgba(20, 12, 10, 0.85);
+  border-top: 1px solid rgba(225, 175, 155, 0.12);
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.45;
+}
+
+.c-xterm-footnote strong {
+  color: #ffb74d;
+}
+
+/* Language Dropdown Selector in Header */
+.c-lang-dropdown-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.c-lang-label {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.c-lang-dropdown {
+  background: linear-gradient(145deg, #442a25 0%, #2e1a16 100%);
+  border: 1px solid rgba(225, 175, 155, 0.35);
+  border-radius: 8px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 5px 12px;
+  outline: none;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.c-lang-dropdown:hover,
+.c-lang-dropdown:focus {
+  border-color: rgba(225, 175, 155, 0.7);
+  box-shadow: 0 0 10px rgba(225, 175, 155, 0.25);
+}
+
+.c-lang-dropdown option {
+  background: #1e1412;
+  color: #ffffff;
+}
+
+.stdin-active-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #81c784;
+  box-shadow: 0 0 6px #81c784;
+  display: inline-block;
+  margin-left: 2px;
+}
+
+.stdin-needed-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(255, 152, 0, 0.25);
+  color: #ffb74d;
+  border: 1px solid rgba(255, 152, 0, 0.55);
+  padding: 1px 6px;
+  border-radius: 4px;
+  margin-left: 4px;
+  letter-spacing: 0.3px;
+  animation: pulse-border 2s infinite;
+}
+
+@keyframes pulse-border {
+  0%, 100% { border-color: rgba(255, 152, 0, 0.55); }
+  50% { border-color: rgba(255, 152, 0, 0.95); box-shadow: 0 0 8px rgba(255, 152, 0, 0.4); }
+}
+
+/* Toast Notification inside Compiler */
+.c-compiler-toast {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, rgba(30, 70, 32, 0.95), rgba(20, 50, 22, 0.95));
+  color: #ffffff;
+  border: 1px solid rgba(129, 199, 132, 0.6);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(76, 175, 80, 0.3);
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: compilerToastFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: none;
+}
+
+@keyframes compilerToastFadeIn {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -10px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1);
+  }
+}
+
+/* In-Compiler Save Modal Overlay */
+.c-save-modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(10, 5, 4, 0.82);
+  backdrop-filter: blur(6px);
+  z-index: 110;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 12px;
+  animation: compilerModalFadeIn 0.2s ease-out;
+}
+
+@keyframes compilerModalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.c-save-modal-card {
+  background: linear-gradient(165deg, #201311 0%, #150a09 100%);
+  border: 1px solid rgba(225, 175, 155, 0.35);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.8), 0 0 25px rgba(225, 175, 155, 0.15);
+  border-radius: 16px;
+  padding: 24px 28px;
+  width: 90%;
+  max-width: 460px;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.c-save-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.c-save-modal-title {
+  margin: 0;
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.c-save-modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.c-save-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.c-save-field-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.c-save-field-input {
+  background: rgba(20, 11, 10, 0.85);
+  border: 1px solid rgba(225, 175, 155, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #ffffff;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.c-save-field-input:focus {
+  border-color: rgba(240, 205, 190, 0.8);
+  box-shadow: 0 0 0 2px rgba(225, 175, 155, 0.25);
+}
+
+.c-save-field-input::placeholder {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.c-save-error-text {
+  font-size: 12.5px;
+  color: #ff6b6b;
+  margin: 0;
+}
+
+.c-save-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 6px;
+}
