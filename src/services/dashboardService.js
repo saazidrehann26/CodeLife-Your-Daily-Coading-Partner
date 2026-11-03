@@ -183,11 +183,16 @@ export function getLocalDateKey(date = new Date()) {
 
 /**
  * 1. Stateless Date-Math Algorithm (Zero Database Writes)
- * Calculates the active problem dynamically based on calendar date.
+ * Calculates the active problem dynamically based on calendar date from the user's Code Store.
  * If user hasn't started practice yet, dayNumber is 0. Once practice begins,
  * it tracks days passed since practice inception.
  */
 export function getTodaysChallenge(username = 'default', _version = 0, customDate = new Date()) {
+  const storedProblems = getCodeStoreProblems(username, _version);
+  if (!storedProblems || storedProblems.length === 0) {
+    return null;
+  }
+
   const data = getUserStreakData(username, _version);
   const now = new Date(customDate);
   const todayUTC = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
@@ -206,15 +211,33 @@ export function getTodaysChallenge(username = 'default', _version = 0, customDat
     dayNumber = 0;
   }
 
-  const index = daysPassed % CURATED_PROBLEMS.length;
+  // Deterministically rotate through the problems stored in the user's Code Store
+  const index = daysPassed % storedProblems.length;
+  const stored = storedProblems[index];
 
   const dateString = now.toLocaleDateString(undefined, {
     month: 'short',
     day: 'numeric',
   });
 
+  const problemTitle = stored.problemName || stored.title || 'Challenge Problem';
+  const matchingCurated = CURATED_PROBLEMS.find(
+    (cp) => cp.title.toLowerCase().trim() === problemTitle.toLowerCase().trim()
+  );
+
   return {
-    ...CURATED_PROBLEMS[index],
+    id: stored.id,
+    title: problemTitle,
+    difficulty: stored.difficulty || matchingCurated?.difficulty || 'Medium',
+    category: stored.category || matchingCurated?.category || stored.location || 'Algorithms',
+    tags: stored.tags || matchingCurated?.tags || [stored.language || 'Code'],
+    description:
+      stored.description ||
+      matchingCurated?.description ||
+      `Challenge from your Code Store: Implement and solve "${problemTitle}". Practice writing a clean, optimized solution from scratch.`,
+    examples: stored.examples || matchingCurated?.examples || null,
+    language: stored.language || matchingCurated?.language || 'Python',
+    filePath: stored.filePath || stored.location || '',
     dailyIndex: index,
     daysPassed,
     dayNumber,

@@ -15,7 +15,6 @@ import {
   getFileExtension,
 } from '../services/dashboardService';
 import './DashboardPage.css';
-import CodeCompilerViewer from './CodeCompilerViewer';
 import OnlineCompiler from './OnlineCompiler';
 
 /**
@@ -85,11 +84,10 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
     return getCodeStoreProblems(profile.username, codeStoreTrigger);
   }, [profile.username, codeStoreTrigger]);
 
-  // Today's Challenge calculated via Stateless Date-Math Algorithm
+  // Today's Challenge calculated via Stateless Date-Math Algorithm from Code Store
   const todaysChallenge = useMemo(() => {
-    return getTodaysChallenge(profile.username, streakTrigger);
-  }, [profile.username, streakTrigger]);
-  const [selectedLanguageTab, setSelectedLanguageTab] = useState('Python');
+    return getTodaysChallenge(profile.username, streakTrigger + codeStoreTrigger);
+  }, [profile.username, streakTrigger, codeStoreTrigger]);
   const [todaySolvedSuccess, setTodaySolvedSuccess] = useState(false);
 
   // Active Modals: null | 'code_store' | 'add_code' | 'settings' | 'personal_details' | 'profile' | 'practice_area' | 'view_code'
@@ -130,7 +128,6 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
     if (extraState.practiceView !== undefined) setPracticeView(extraState.practiceView);
     if (extraState.practiceLanguage !== undefined) {
       setPracticeLanguage(extraState.practiceLanguage);
-      if (extraState.practiceLanguage) setSelectedLanguageTab(extraState.practiceLanguage);
     } else if (modalName === 'practice_area' && (extraState.practiceView === 'picker' || !extraState.practiceView)) {
       // Never pre-select any language when opening the Practice Area picker
       setPracticeLanguage(null);
@@ -263,11 +260,12 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
 
   // Handle Mark Today's Challenge as Solved (increases day & problem count)
   const handleSolveChallenge = useCallback(() => {
+    if (!todaysChallenge) return;
     recordProblemSolved(profile.username, todaysChallenge.id);
     setStreakTrigger((t) => t + 1);
     setTodaySolvedSuccess(true);
     setTimeout(() => setTodaySolvedSuccess(false), 4000);
-  }, [profile.username, todaysChallenge.id]);
+  }, [profile.username, todaysChallenge]);
 
   // Handle Add New Code to Store (only problem name and language, no location)
   const handleSaveNewCode = (e) => {
@@ -639,7 +637,7 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                   <span className="section-heading-dot" />
                   Today's Challenge
                 </h2>
-                {allStoredCodes.length > 0 && (
+                {allStoredCodes.length > 0 && todaysChallenge && (
                   <div className="date-math-badge" title="Stateless Date-Math Algorithm index">
                     {todaysChallenge.isPracticeStarted
                       ? `Day ${todaysChallenge.dayNumber} • ${todaysChallenge.dateString || 'Today'}`
@@ -648,7 +646,7 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                 )}
               </div>
 
-              {allStoredCodes.length === 0 ? (
+              {allStoredCodes.length === 0 || !todaysChallenge ? (
                 <div style={{ textAlign: 'center', padding: '24px 0', color: '#ffffff' }}>
                   No stored problems in Code Store yet. Store your first code using "+ Add New Code" above to unlock Today's Challenge!
                 </div>
@@ -667,6 +665,11 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                       >
                         {todaysChallenge.difficulty}
                       </span>
+                      {todaysChallenge.language && (
+                        <span className="problem-lang-badge" style={{ fontSize: '11.5px', padding: '4px 12px' }}>
+                          {todaysChallenge.language}
+                        </span>
+                      )}
                       <span className="category-tag">{todaysChallenge.category}</span>
                       {(todaysChallenge.tags || []).map((t) => (
                         <span key={t} className="category-tag">
@@ -691,22 +694,29 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                     </div>
                   )}
 
-                  {/* Starter Code in Standard Compiler Format with Line Numbers */}
-                  <CodeCompilerViewer
-                    code={todaysChallenge.starterSnippet?.[selectedLanguageTab] || '// Starter code'}
-                    language={selectedLanguageTab}
-                    tabs={['Python', 'C++', 'C']}
-                    activeTab={selectedLanguageTab}
-                    onTabChange={setSelectedLanguageTab}
-                    maxHeight="250px"
-                  />
-
                   <div className="challenge-actions-row">
                     {todaySolvedSuccess && (
                       <span style={{ color: '#ffffff', fontSize: '13px', fontWeight: 600 }}>
                         🔥 Streak updated! Solved for today.
                       </span>
                     )}
+                    <button
+                      type="button"
+                      className="spherical-btn"
+                      onClick={() => {
+                        openModal('practice_area', {
+                          practiceView: 'compiler',
+                          practiceLanguage: todaysChallenge.language || 'C',
+                        });
+                      }}
+                      title="Open Practice Area compiler to code and test your solution"
+                    >
+                      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+                        <polyline points="16 18 22 12 16 6" />
+                        <polyline points="8 6 2 12 8 18" />
+                      </svg>
+                      <span>Solve in Arena</span>
+                    </button>
                     <button
                       type="button"
                       className="spherical-btn spherical-btn-primary"
