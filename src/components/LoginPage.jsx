@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { generateOtp, sendSignUpVerificationOtp, sendDeviceVerificationOtp } from '../services/emailService';
 import {
   findUser,
+  findUserAsync,
   checkUserExists,
   isValidApprovedEmail,
   getApprovedEmailErrorMessage,
@@ -14,6 +15,7 @@ import {
   clearRememberedCredentials,
 } from '../services/dbService';
 import { evaluatePasswordStrength } from '../services/passwordService';
+import { supabaseSignIn } from '../services/supabaseClient';
 import PasswordStrengthIndicator from './PasswordStrengthIndicator';
 import BrandLogo from './BrandLogo';
 import './LoginPage.css';
@@ -193,15 +195,30 @@ export default function LoginPage({
 
     // Database verification on Sign In:
     // Ensure every single time that the user already exists in the database!
-    const existingUser = findUser(trimmedUser);
+    let existingUser = findUser(trimmedUser);
+    if (!existingUser) {
+      existingUser = await findUserAsync(trimmedUser);
+    }
     if (!existingUser) {
       showToast('No account found in our database for this username or email. Please sign up first.', 'error');
       signInUsernameRef.current?.focus();
       return false;
     }
 
-    // Validate password: must strictly match user's registered password in database
-    if (existingUser.password !== trimmedPass) {
+    // Validate password: must match user's registered password in database or Supabase Auth
+    let isPasswordCorrect = existingUser.password === trimmedPass;
+    if (!isPasswordCorrect && existingUser.email) {
+      try {
+        const sbRes = await supabaseSignIn(existingUser.email, trimmedPass);
+        if (sbRes.success) {
+          isPasswordCorrect = true;
+        }
+      } catch {
+        // Fallback
+      }
+    }
+
+    if (!isPasswordCorrect) {
       showToast('Incorrect password. Please try again or click Forgot password.', 'error');
       signInPasswordRef.current?.focus();
       return false;

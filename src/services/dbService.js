@@ -1,10 +1,19 @@
 /**
- * Local Database Service for Daily Code Practice
- * - Persistent mock database stored in localStorage
+ * Supabase Database & Authentication Service for Daily Code Practice
+ * 
+ * Key Features:
+ * - Supabase integration as the primary remote database & auth provider
+ * - Persistent local cache in localStorage for fast performance and offline resilience
  * - Strict email format validation: ONLY Gmail (xyz@gmail.com) and Educational Emails (.edu, .edu.*, .ac.*)
- * - Device tracking & authentication: multi-device login requires mail verification
- * - User lookup, registration, and password update
+ * - Multi-device verification: unrecognized devices require mail verification OTP
+ * - Every single login verifies that the user already exists in the database
+ * 
+ * SECURITY:
+ * - Only publishable keys or client-safe endpoints are used on the frontend.
+ * - SUPABASE_SECRET_KEY is kept strictly on the backend server.
  */
+
+import { supabase } from './supabaseClient.js';
 
 const DB_STORAGE_KEY = 'daily_code_practice_users_db';
 const DEVICE_ID_KEY = 'codelife_device_id';
@@ -18,7 +27,7 @@ const INITIAL_SEED_USERS = [
     institution: 'AUST',
     password: 'password123',
     trustedDevices: [],
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-01-01T00:00:00.000Z',
   },
   {
     name: 'Coading User',
@@ -27,7 +36,7 @@ const INITIAL_SEED_USERS = [
     institution: 'Dhaka University',
     password: 'password123',
     trustedDevices: [],
-    createdAt: new Date().toISOString(),
+    createdAt: '2026-01-01T00:00:00.000Z',
   },
 ];
 
@@ -149,7 +158,6 @@ export function isDeviceTrustedForUser(usernameOrEmail, deviceId) {
 
   const currentDeviceId = deviceId || getOrCreateDeviceId();
 
-  // If user has a trustedDevices array, check if currentDeviceId is included
   if (Array.isArray(user.trustedDevices)) {
     return user.trustedDevices.includes(currentDeviceId);
   }
@@ -158,7 +166,9 @@ export function isDeviceTrustedForUser(usernameOrEmail, deviceId) {
 }
 
 /**
- * Add a device ID to user's list of trusted/verified devices
+ * Add a device ID to user's list of trusted/verified devices.
+ * Updates local cache and syncs with Supabase.
+ * 
  * @param {string} usernameOrEmail
  * @param {string} [deviceId]
  * @returns {boolean}
@@ -183,7 +193,37 @@ export function addTrustedDeviceForUser(usernameOrEmail, deviceId) {
   users[index].lastLoginDevice = currentDeviceId;
   users[index].lastLoginAt = new Date().toISOString();
   saveUsers(users);
+
+  // Sync to Supabase in background
+  syncTrustedDeviceToSupabase(user.email || user.username, currentDeviceId);
+
   return true;
+}
+
+/**
+ * Helper to sync trusted device to Supabase backend API or client
+ */
+async function syncTrustedDeviceToSupabase(identifier, deviceId) {
+  try {
+    const res = await fetch('/api/auth/trust-device', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, deviceId }),
+    });
+    if (!res.ok) {
+      // If backend API isn't running, update via client if active session
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const existing = Array.isArray(user.user_metadata?.trustedDevices) ? user.user_metadata.trustedDevices : [];
+        const updated = [...new Set([...existing, deviceId])];
+        await supabase.auth.updateUser({
+          data: { trustedDevices: updated },
+        });
+      }
+    }
+  } catch (err) {
+    console.warn('[DB] Supabase device sync notice:', err.message);
+  }
 }
 
 /**
@@ -205,7 +245,7 @@ export function clearTrustedDevicesForUser(usernameOrEmail) {
 }
 
 /**
- * Purge any legacy Alex Johnson / love_code data from memory and database
+ * Purge legacy mockup data from memory and database
  */
 export function purgeAlexJohnson() {
   try {
@@ -258,7 +298,7 @@ export function purgeAlexJohnson() {
     localStorage.removeItem('codelife_streak_love_code');
     localStorage.removeItem('codelife_codestore_love_code');
   } catch (e) {
-    console.error('Error purging Alex Johnson from memory/db:', e);
+    console.error('Error purging legacy data from memory/db:', e);
   }
 }
 
@@ -268,7 +308,7 @@ if (typeof window !== 'undefined') {
 }
 
 /**
- * Retrieve all users from database
+ * Retrieve all users from database cache
  * @returns {Array} Array of user objects
  */
 export function getUsers() {
@@ -283,7 +323,6 @@ export function getUsers() {
       localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(INITIAL_SEED_USERS));
       return INITIAL_SEED_USERS;
     }
-    // Ensure Alex Johnson / love_code is purged if still present in storage
     const cleaned = parsed
       .filter(
         (u) =>
@@ -306,7 +345,7 @@ export function getUsers() {
 }
 
 /**
- * Save users to database
+ * Save users to database cache
  * @param {Array} users
  */
 function saveUsers(users) {
@@ -318,7 +357,7 @@ function saveUsers(users) {
 }
 
 /**
- * Find user by email or username (case-insensitive)
+ * Find user by email or username (synchronous, checks local cache)
  * @param {string} identifier - Email or username
  * @returns {object|null} Found user or null
  */
@@ -331,6 +370,45 @@ export function findUser(identifier) {
       (u) => u.email.toLowerCase() === clean || u.username.toLowerCase() === clean
     ) || null
   );
+}
+
+/**
+ * Find user asynchronously, checking local cache first, then querying Supabase backend
+ * @param {string} identifier - Email or username
+ * @returns {Promise<object|null>} Found user or null
+ */
+export async function findUserAsync(identifier) {
+  if (!identifier) return null;
+  const local = findUser(identifier);
+  if (local) return local;
+
+  try {
+    const res = await fetch('/api/auth/check-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: identifier.trim() }),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.exists && data.user) {
+        // Cache user locally
+        const users = getUsers();
+        const existingIdx = users.findIndex(
+          (u) => u.email.toLowerCase() === data.user.email?.toLowerCase()
+        );
+        if (existingIdx === -1) {
+          users.push(data.user);
+          saveUsers(users);
+        }
+        return data.user;
+      }
+    }
+  } catch (err) {
+    console.warn('[DB] Backend check-user unavailable:', err.message);
+  }
+
+  return null;
 }
 
 /**
@@ -351,7 +429,7 @@ export function checkUserExists(email, username) {
 }
 
 /**
- * Register a new user in database
+ * Register a new user in database & Supabase
  * @param {object} userData
  * @returns {{ success: boolean, message?: string, user?: object }}
  */
@@ -396,6 +474,9 @@ export function registerUser(userData) {
   users.push(newUser);
   saveUsers(users);
 
+  // Sync new user to Supabase in background
+  syncNewUserToSupabase(newUser);
+
   return {
     success: true,
     user: newUser,
@@ -403,7 +484,38 @@ export function registerUser(userData) {
 }
 
 /**
- * Update user's password in database
+ * Background helper to persist registered user in Supabase
+ */
+async function syncNewUserToSupabase(userData) {
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
+    });
+
+    if (!res.ok) {
+      // Fallback: register via client Supabase Auth (publishable key)
+      await supabase.auth.signUp({
+        email: userData.email,
+        password: userData.password,
+        options: {
+          data: {
+            name: userData.name,
+            username: userData.username,
+            institution: userData.institution,
+            trustedDevices: userData.trustedDevices,
+          },
+        },
+      });
+    }
+  } catch (err) {
+    console.warn('[DB] Supabase user registration notice:', err.message);
+  }
+}
+
+/**
+ * Update user's password in database & Supabase
  * @param {string} identifier - Email or username
  * @param {string} newPassword
  * @returns {boolean}
@@ -417,12 +529,33 @@ export function updateUserPassword(identifier, newPassword) {
     (u) => u.email.toLowerCase() === clean || u.username.toLowerCase() === clean
   );
 
-  if (index === -1) return false;
+  if (index !== -1) {
+    users[index].password = newPassword.trim();
+    users[index].updatedAt = new Date().toISOString();
+    saveUsers(users);
+  }
 
-  users[index].password = newPassword.trim();
-  users[index].updatedAt = new Date().toISOString();
-  saveUsers(users);
+  // Update in Supabase in background
+  syncPasswordUpdateToSupabase(identifier, newPassword);
   return true;
+}
+
+/**
+ * Background helper to update password in Supabase
+ */
+async function syncPasswordUpdateToSupabase(identifier, newPassword) {
+  try {
+    const res = await fetch('/api/auth/update-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier, newPassword }),
+    });
+    if (!res.ok) {
+      await supabase.auth.updateUser({ password: newPassword });
+    }
+  } catch (err) {
+    console.warn('[DB] Supabase password update notice:', err.message);
+  }
 }
 
 /**
@@ -435,6 +568,71 @@ export function updateUserPassword(identifier, newPassword) {
 export function isUserInDatabase(identifier) {
   if (!identifier || typeof identifier !== 'string') return false;
   return Boolean(findUser(identifier));
+}
+
+/**
+ * Asynchronously check whether a user exists in Supabase database
+ * @param {string} identifier - Username or Email
+ * @returns {Promise<boolean>}
+ */
+export async function isUserInDatabaseAsync(identifier) {
+  if (!identifier || typeof identifier !== 'string') return false;
+  const user = await findUserAsync(identifier);
+  return Boolean(user);
+}
+
+/**
+ * Sync users list from Supabase backend to keep local cache fresh
+ */
+export async function syncUsersFromSupabase() {
+  try {
+    const res = await fetch('/api/auth/users');
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data.users) && data.users.length > 0) {
+        const localUsers = getUsers();
+        const merged = [...localUsers];
+
+        for (const remoteUser of data.users) {
+          const idx = merged.findIndex(
+            (u) => u.email.toLowerCase() === remoteUser.email.toLowerCase()
+          );
+          if (idx !== -1) {
+            merged[idx] = {
+              ...merged[idx],
+              name: remoteUser.name || merged[idx].name,
+              username: remoteUser.username || merged[idx].username,
+              institution: remoteUser.institution || merged[idx].institution,
+              trustedDevices: Array.isArray(remoteUser.trustedDevices)
+                ? remoteUser.trustedDevices
+                : merged[idx].trustedDevices,
+            };
+          } else {
+            merged.push({
+              name: remoteUser.name || '',
+              username: remoteUser.username || remoteUser.email.split('@')[0],
+              email: remoteUser.email,
+              institution: remoteUser.institution || '',
+              password: 'password123',
+              trustedDevices: Array.isArray(remoteUser.trustedDevices)
+                ? remoteUser.trustedDevices
+                : [],
+              createdAt: remoteUser.createdAt || new Date().toISOString(),
+            });
+          }
+        }
+
+        saveUsers(merged);
+      }
+    }
+  } catch {
+    // Silent fallback if server is offline
+  }
+}
+
+// Automatically sync users in background on browser initialization
+if (typeof window !== 'undefined') {
+  syncUsersFromSupabase();
 }
 
 /**

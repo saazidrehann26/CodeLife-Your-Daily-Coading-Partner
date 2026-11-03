@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import SphericalOtpInput from './SphericalOtpInput';
 import OtpTimer from './OtpTimer';
 import { generateOtp, sendDeviceVerificationOtp } from '../services/emailService';
-import { findUser, addTrustedDeviceForUser, saveRememberedCredentials } from '../services/dbService';
+import { findUser, findUserAsync, addTrustedDeviceForUser, saveRememberedCredentials } from '../services/dbService';
 import BrandLogo from './BrandLogo';
 import './AuthPages.css';
 
@@ -39,6 +39,29 @@ export default function DeviceVerificationPage({
   const deviceId = verificationData?.deviceId;
   const willRemember = verificationData?.willRemember;
 
+  const completeDeviceVerification = (userInDb) => {
+    // 1. Authorize and trust this new device for this user
+    addTrustedDeviceForUser(userInDb.username || userInDb.email, deviceId);
+
+    // 2. If user checked "Remember me" on sign-in, persist credentials
+    if (willRemember && (userInDb.username || userInDb.email) && userInDb.password) {
+      saveRememberedCredentials({
+        username: userInDb.username || userInDb.email,
+        password: userInDb.password,
+        rememberMe: true,
+      });
+    }
+
+    setIsVerifying(false);
+
+    // 3. Complete login and navigate to Dashboard
+    if (onVerificationSuccess) {
+      onVerificationSuccess(userInDb);
+    } else {
+      onNavigate('dashboard', null, true, true);
+    }
+  };
+
   // Auto-verify as soon as the user enters all 5 digits
   const handleOtpComplete = (enteredCode) => {
     setErrorMessage('');
@@ -54,33 +77,20 @@ export default function DeviceVerificationPage({
       // Check OTP against expected OTP or universal test fallback '12345'
       if (enteredCode === expectedOtp || enteredCode === '12345') {
         // Strict Database Verification: Ensure user is still present in database
-        const userInDb = findUser(user?.username || user?.email);
+        let userInDb = findUser(user?.username || user?.email);
         if (!userInDb) {
-          setIsVerifying(false);
-          setErrorMessage('User account not found in database. Please sign up.');
+          findUserAsync(user?.username || user?.email).then((asyncUser) => {
+            if (!asyncUser) {
+              setIsVerifying(false);
+              setErrorMessage('User account not found in database. Please sign up.');
+              return;
+            }
+            completeDeviceVerification(asyncUser);
+          });
           return;
         }
 
-        // 1. Authorize and trust this new device for this user
-        addTrustedDeviceForUser(userInDb.username, deviceId);
-
-        // 2. If user checked "Remember me" on sign-in, persist credentials
-        if (willRemember && userInDb.username && userInDb.password) {
-          saveRememberedCredentials({
-            username: userInDb.username,
-            password: userInDb.password,
-            rememberMe: true,
-          });
-        }
-
-        setIsVerifying(false);
-
-        // 3. Complete login and navigate to Dashboard
-        if (onVerificationSuccess) {
-          onVerificationSuccess(userInDb);
-        } else {
-          onNavigate('dashboard', null, true, true);
-        }
+        completeDeviceVerification(userInDb);
       } else {
         setIsVerifying(false);
         setErrorMessage('Incorrect verification code. Please check your email and try again.');

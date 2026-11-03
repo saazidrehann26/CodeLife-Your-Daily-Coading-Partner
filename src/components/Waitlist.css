@@ -1,0 +1,177 @@
+/* Scoped Fallback Styles for Waitlist Component (Matching CodeLife Dark UI) */
+.waitlist-card {
+  position: relative;
+  width: 100%;
+  max-width: 580px;
+  margin: 28px auto;
+  padding: 28px 24px;
+  background: rgba(35, 21, 19, 0.92);
+  border: 1px solid #482c27;
+  border-radius: 20px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(12px);
+  box-sizing: border-box;
+  text-align: center;
+  transition: border-color 0.25s ease, transform 0.25s ease;
+}
+
+.waitlist-card:hover {
+  border-color: #6a4038;
+}
+
+.waitlist-header {
+  margin-bottom: 20px;
+}
+
+.waitlist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  margin-bottom: 12px;
+  border-radius: 9999px;
+  background: rgba(226, 138, 117, 0.12);
+  border: 1px solid rgba(226, 138, 117, 0.3);
+  color: #e28a75;
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.waitlist-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #fcf9f8;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.02em;
+}
+
+.waitlist-subtitle {
+  font-size: 0.925rem;
+  color: #b79b94;
+  margin: 0;
+  line-height: 1.5;
+}
+
+.waitlist-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
+}
+
+@media (min-width: 640px) {
+  .waitlist-form {
+    flex-direction: row;
+    align-items: center;
+  }
+}
+
+.waitlist-input {
+  flex: 1;
+  min-width: 0;
+  padding: 12px 18px;
+  background: #351e1a;
+  border: 1px solid #5a3731;
+  border-radius: 9999px;
+  color: #fcf9f8;
+  font-size: 0.95rem;
+  outline: none;
+  transition: all 0.2s ease;
+  box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.25);
+  box-sizing: border-box;
+}
+
+.waitlist-input::placeholder {
+  color: #a68982;
+}
+
+.waitlist-input:focus {
+  border-color: #e28a75;
+  box-shadow: 0 0 0 3px rgba(226, 138, 117, 0.25), inset 0 2px 4px rgba(0, 0, 0, 0.25);
+}
+
+.waitlist-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #e28a75 0%, #f4ad9b 100%);
+  color: #180f0e;
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 14px rgba(226, 138, 117, 0.3);
+  white-space: nowrap;
+}
+
+.waitlist-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #e99884 0%, #f8beae 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 20px rgba(226, 138, 117, 0.4);
+}
+
+.waitlist-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.waitlist-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.waitlist-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(24, 15, 14, 0.25);
+  border-top-color: #180f0e;
+  border-radius: 50%;
+  animation: waitlist-spin 0.7s linear infinite;
+}
+
+@keyframes waitlist-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.waitlist-alert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 10px 16px;
+  margin-top: 14px;
+  border-radius: 12px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  animation: waitlist-fade-in 0.3s ease;
+}
+
+.waitlist-alert-success {
+  background: rgba(74, 222, 128, 0.12);
+  border: 1px solid rgba(74, 222, 128, 0.35);
+  color: #4ade80;
+}
+
+.waitlist-alert-error {
+  background: rgba(248, 113, 113, 0.12);
+  border: 1px solid rgba(248, 113, 113, 0.35);
+  color: #f87171;
+}
+
+@keyframes waitlist-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { generateOtp, sendPasswordResetOtp } from '../services/emailService';
-import { findUser, isValidApprovedEmail, getApprovedEmailErrorMessage } from '../services/dbService';
+import { findUser, findUserAsync, isValidApprovedEmail, getApprovedEmailErrorMessage } from '../services/dbService';
 import BrandLogo from './BrandLogo';
 import './AuthPages.css';
 
@@ -36,7 +36,10 @@ export default function ForgotPasswordPage({ onNavigate, onOtpSent }) {
     }
 
     // 2. Database validation: check if email or username is present in database
-    const existingUser = findUser(trimmed);
+    let existingUser = findUser(trimmed);
+    if (!existingUser) {
+      existingUser = await findUserAsync(trimmed);
+    }
     if (!existingUser) {
       setErrorMsg('This email/username is not found in our database. Please check your spelling or sign up.');
       return;

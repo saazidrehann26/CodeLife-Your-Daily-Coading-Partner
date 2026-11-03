@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import CompanyLogo from './CompanyLogo';
+import Waitlist from './Waitlist';
 import { getUserProfile } from '../services/dashboardService';
 import './LandingPage.css';
 
@@ -426,6 +427,9 @@ export default function LandingPage({ onGetStarted, currentUser, onNavigate, onS
                 />
               </div>
             </div>
+
+            {/* Email Waitlist / Newsletter Capture Form */}
+            <Waitlist />
 
             {/* Final CTA Bar */}
             <div className="ending-cta-box">
