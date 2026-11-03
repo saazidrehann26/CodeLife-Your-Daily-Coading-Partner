@@ -86,5 +86,6 @@ function judge0BackendPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
+  base: '/CodeLife-Your-Daily-Coading-Partner/',
   plugins: [react(), judge0BackendPlugin()],
 })
