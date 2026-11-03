@@ -42,13 +42,11 @@ int main() {
     fileName: 'main.cpp',
     logo: '/cpp_logo_white.png',
     defaultCode: `#include <iostream>
-using namespace std;
 
 int main() {
-    cout << "Enter a number: ";
-    int x;
-    cin >> x;
-    cout << "You entered: " << x << endl;
+    // Your code goes here
+    
+
     return 0;
 }`,
   },
@@ -60,9 +58,12 @@ int main() {
     monacoLanguage: 'python',
     fileName: 'main.py',
     logo: '/python_logo_white.png',
-    defaultCode: `name = input("Enter your name: ")
-age = input("Enter your age: ")
-print(f"Hello {name}, you are {age} years old.")`,
+    defaultCode: `def main():
+    # Your code goes here
+    
+
+if __name__ == "__main__":
+    main()`,
   },
 };
 
