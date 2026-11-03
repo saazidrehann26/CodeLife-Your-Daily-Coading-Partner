@@ -324,7 +324,6 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
   // Handle Practice Area Language Selection (launches compiler for C, C++, or Python)
   const handleSelectPracticeLanguage = (langId) => {
     setPracticeLanguage(langId);
-    setSelectedLanguageTab(langId);
     setPracticeView('compiler');
 
     if (typeof window !== 'undefined') {
@@ -441,7 +440,6 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
         setPracticeView(targetPracticeView);
         if (targetLang) {
           setPracticeLanguage(targetLang);
-          setSelectedLanguageTab(targetLang);
         }
 
         if (targetProblemId) {
