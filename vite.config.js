@@ -287,6 +287,6 @@ function backendApiPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: '/CodeLife-Your-Daily-Coading-Partner/',
+  base: process.env.VERCEL ? '/' : '/CodeLife-Your-Daily-Coading-Partner/',
   plugins: [react(), backendApiPlugin()],
 })
