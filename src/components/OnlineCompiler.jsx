@@ -27,10 +27,9 @@ const LANGUAGE_CONFIGS = {
     defaultCode: `#include <stdio.h>
 
 int main() {
-    printf("Enter a number: ");
-    int n;
-    scanf("%d", &n);
-    printf("You entered: %d\\n", n);
+    // Your code goes here
+   
+
     return 0;
 }`,
   },
