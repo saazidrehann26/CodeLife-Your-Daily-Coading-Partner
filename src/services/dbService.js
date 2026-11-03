@@ -18,27 +18,8 @@ import { supabase } from './supabaseClient.js';
 const DB_STORAGE_KEY = 'daily_code_practice_users_db';
 const DEVICE_ID_KEY = 'codelife_device_id';
 
-// Initial pre-registered users in the database with approved credentials
-const INITIAL_SEED_USERS = [
-  {
-    name: 'Student Dev',
-    username: 'student_dev',
-    email: 'sarah.cse@aust.edu',
-    institution: 'AUST',
-    password: 'password123',
-    trustedDevices: [],
-    createdAt: '2026-01-01T00:00:00.000Z',
-  },
-  {
-    name: 'Coading User',
-    username: 'coader',
-    email: 'coader@gmail.com',
-    institution: 'Dhaka University',
-    password: 'password123',
-    trustedDevices: [],
-    createdAt: '2026-01-01T00:00:00.000Z',
-  },
-];
+// Clean, zero-user initial state (all user accounts are stored dynamically in database)
+const INITIAL_SEED_USERS = [];
 
 /**
  * Strict Email Security Validation:
@@ -245,23 +226,34 @@ export function clearTrustedDevicesForUser(usernameOrEmail) {
 }
 
 /**
- * Purge legacy mockup data from memory and database
+ * Purge legacy mockup and seed accounts from memory and localStorage
  */
 export function purgeAlexJohnson() {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
+
+    const legacyUsernames = ['love_code', 'student_dev', 'coader'];
+    const legacyEmails = ['lovecode@gmail.com', 'sarah.cse@aust.edu', 'coader@gmail.com'];
+    const legacyNames = ['alex johnson', 'student dev', 'coading user'];
+
+    const isLegacyUser = (u) => {
+      if (!u) return false;
+      const uname = (u.username || '').toLowerCase();
+      const umail = (u.email || '').toLowerCase();
+      const unameStr = (u.name || '').toLowerCase();
+      return (
+        legacyUsernames.includes(uname) ||
+        legacyEmails.includes(umail) ||
+        legacyNames.includes(unameStr)
+      );
+    };
 
     // 1. Clean users database
     const rawUsers = localStorage.getItem(DB_STORAGE_KEY);
     if (rawUsers) {
       const parsed = JSON.parse(rawUsers);
       if (Array.isArray(parsed)) {
-        const cleaned = parsed.filter(
-          (u) =>
-            u?.username?.toLowerCase() !== 'love_code' &&
-            u?.name?.toLowerCase() !== 'alex johnson' &&
-            u?.email?.toLowerCase() !== 'lovecode@gmail.com'
-        );
+        const cleaned = parsed.filter((u) => !isLegacyUser(u));
         if (cleaned.length !== parsed.length) {
           localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(cleaned));
         }
@@ -272,11 +264,7 @@ export function purgeAlexJohnson() {
     const rawActive = localStorage.getItem('codelife_active_user');
     if (rawActive) {
       const active = JSON.parse(rawActive);
-      if (
-        active?.username?.toLowerCase() === 'love_code' ||
-        active?.name?.toLowerCase() === 'alex johnson' ||
-        active?.email?.toLowerCase() === 'lovecode@gmail.com'
-      ) {
+      if (isLegacyUser(active)) {
         localStorage.removeItem('codelife_active_user');
       }
     }
@@ -285,20 +273,35 @@ export function purgeAlexJohnson() {
     const rawRemembered = localStorage.getItem('codelife_remembered_credentials');
     if (rawRemembered) {
       const remembered = JSON.parse(rawRemembered);
-      if (
-        remembered?.username?.toLowerCase() === 'love_code' ||
-        remembered?.username?.toLowerCase() === 'lovecode@gmail.com'
-      ) {
+      if (isLegacyUser(remembered)) {
         localStorage.removeItem('codelife_remembered_credentials');
       }
     }
 
-    // 4. Clean user profiles, streaks, and code store data for love_code
-    localStorage.removeItem('codelife_profiles_love_code');
-    localStorage.removeItem('codelife_streak_love_code');
-    localStorage.removeItem('codelife_codestore_love_code');
+    // 4. Clean user profiles, streaks, and code store data for legacy accounts
+    for (const uname of legacyUsernames) {
+      localStorage.removeItem(`codelife_profiles_${uname}`);
+      localStorage.removeItem(`codelife_streak_${uname}`);
+      localStorage.removeItem(`codelife_codestore_${uname}`);
+    }
   } catch (e) {
     console.error('Error purging legacy data from memory/db:', e);
+  }
+}
+
+/**
+ * Wipe all user data completely across browser cache
+ */
+export function clearAllUserData() {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      localStorage.removeItem(DB_STORAGE_KEY);
+      localStorage.removeItem('codelife_active_user');
+      localStorage.removeItem('codelife_remembered_credentials');
+      localStorage.setItem(DB_STORAGE_KEY, JSON.stringify([]));
+    }
+  } catch (e) {
+    console.error('Error clearing local user data:', e);
   }
 }
 
@@ -324,12 +327,18 @@ export function getUsers() {
       return INITIAL_SEED_USERS;
     }
     const cleaned = parsed
-      .filter(
-        (u) =>
-          u?.username?.toLowerCase() !== 'love_code' &&
-          u?.name?.toLowerCase() !== 'alex johnson' &&
-          u?.email?.toLowerCase() !== 'lovecode@gmail.com'
-      )
+      .filter((u) => {
+        const uname = (u?.username || '').toLowerCase();
+        const umail = (u?.email || '').toLowerCase();
+        return (
+          uname !== 'love_code' &&
+          uname !== 'student_dev' &&
+          uname !== 'coader' &&
+          umail !== 'lovecode@gmail.com' &&
+          umail !== 'sarah.cse@aust.edu' &&
+          umail !== 'coader@gmail.com'
+        );
+      })
       .map((u) => ({
         ...u,
         trustedDevices: Array.isArray(u.trustedDevices) ? u.trustedDevices : [],
