@@ -501,6 +501,12 @@
   word-break: break-word;
 }
 
+.sidebar-user-card .spherical-btn,
+.sidebar-user-profile-btn {
+  font-size: 14.5px !important;
+  padding: 8px 16px !important;
+}
+
 /* ==========================================================================
    5. CENTER COLUMN: WELCOME NOTE, RECENT PROBLEMS, TODAY'S CHALLENGE
    ========================================================================== */

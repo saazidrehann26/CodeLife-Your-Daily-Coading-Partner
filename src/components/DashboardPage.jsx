@@ -521,7 +521,7 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
 
               <button
                 type="button"
-                className="spherical-btn spherical-btn-sm"
+                className="spherical-btn spherical-btn-sm sidebar-user-profile-btn"
                 style={{ marginTop: '8px', width: '100%' }}
                 onClick={(e) => {
                   e.stopPropagation();
