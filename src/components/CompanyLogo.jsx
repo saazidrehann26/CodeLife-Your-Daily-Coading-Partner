@@ -12,18 +12,19 @@ export default function CompanyLogo({ position = 'top-left', className = '' }) {
   return (
     <aside
       className={`company-logo-container company-logo-${position} ${className}`}
-      aria-label="Company Logo"
+      aria-label="Localhost"
     >
-      <div className="company-logo-badge" title="Company Logo">
+      <div className="company-logo-badge" title="Localhost">
         <img
-          src="/company_logo_clean.png"
+          src="/company_emblem.png"
           onError={(e) => {
-            // Fallback to original public/company_logo.png if clean crop not found
-            e.currentTarget.src = '/company_logo.png';
+            // Fallback to clean composite logo if separate emblem is unavailable
+            e.currentTarget.src = '/company_logo_clean.png';
           }}
-          alt="Company Logo"
-          className="company-logo-img"
+          alt="Localhost Emblem"
+          className="company-logo-emblem"
         />
+        <span className="company-logo-brand">LOCALHOST</span>
       </div>
     </aside>
   );

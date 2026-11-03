@@ -79,31 +79,31 @@
 .dash-brand-wrap {
   display: flex;
   align-items: center;
-  gap: 14px;
+  gap: 10px;
   cursor: pointer;
   text-decoration: none;
 }
 
 .dash-brand-logo-frame {
-  width: 44px;
-  height: 44px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   overflow: hidden;
   background: #ffffff;
-  padding: 3px;
+  padding: 2.5px;
   display: flex;
   align-items: center;
   justify-content: center;
   border: 1.5px solid rgba(225, 175, 155, 0.45);
   box-shadow: 
-    0 0 16px rgba(225, 175, 155, 0.25),
+    0 0 14px rgba(225, 175, 155, 0.22),
     inset 0 0 4px rgba(0, 0, 0, 0.3);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .dash-brand-wrap:hover .dash-brand-logo-frame {
   transform: scale(1.05);
-  box-shadow: 0 0 22px rgba(225, 175, 155, 0.45);
+  box-shadow: 0 0 20px rgba(225, 175, 155, 0.4);
 }
 
 .dash-brand-logo-img {
@@ -115,13 +115,13 @@
 
 .dash-brand-title {
   font-family: 'Bell MT', 'Bell', 'Georgia', serif;
-  font-size: 26px;
+  font-size: 21px;
   font-weight: 700;
   color: #ffffff;
   letter-spacing: 0.5px;
   text-shadow: 
     0 1px 2px rgba(0, 0, 0, 0.6),
-    0 0 16px rgba(255, 255, 255, 0.25);
+    0 0 14px rgba(255, 255, 255, 0.22);
 }
 
 /* Horizontal Nav Links */

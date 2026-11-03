@@ -20,7 +20,6 @@ export default function BrandLogo({ title = "CodeLife" }) {
           />
         </div>
       </div>
-      <span className="brand-pill">CodeLife</span>
     </div>
   );
 }
