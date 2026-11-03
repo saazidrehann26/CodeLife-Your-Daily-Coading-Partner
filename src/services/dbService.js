@@ -373,14 +373,18 @@ export function findUser(identifier) {
 }
 
 /**
- * Find user asynchronously, checking local cache first, then querying Supabase backend
+ * Find user asynchronously, checking local cache first (or forcing server refresh),
+ * then querying Supabase backend to ensure accounts registered on other devices are recognized.
  * @param {string} identifier - Email or username
+ * @param {boolean} [forceRefresh=false] - Whether to bypass local cache and query server directly
  * @returns {Promise<object|null>} Found user or null
  */
-export async function findUserAsync(identifier) {
+export async function findUserAsync(identifier, forceRefresh = false) {
   if (!identifier) return null;
-  const local = findUser(identifier);
-  if (local) return local;
+  if (!forceRefresh) {
+    const local = findUser(identifier);
+    if (local) return local;
+  }
 
   try {
     const res = await fetch('/api/auth/check-user', {
@@ -392,15 +396,23 @@ export async function findUserAsync(identifier) {
     if (res.ok) {
       const data = await res.json();
       if (data.exists && data.user) {
-        // Cache user locally
+        // Cache or update user locally
         const users = getUsers();
         const existingIdx = users.findIndex(
-          (u) => u.email.toLowerCase() === data.user.email?.toLowerCase()
+          (u) =>
+            u.email.toLowerCase() === data.user.email?.toLowerCase() ||
+            u.username?.toLowerCase() === data.user.username?.toLowerCase()
         );
-        if (existingIdx === -1) {
+        if (existingIdx !== -1) {
+          users[existingIdx] = {
+            ...users[existingIdx],
+            ...data.user,
+            password: data.user.password || users[existingIdx].password,
+          };
+        } else {
           users.push(data.user);
-          saveUsers(users);
         }
+        saveUsers(users);
         return data.user;
       }
     }
@@ -408,7 +420,7 @@ export async function findUserAsync(identifier) {
     console.warn('[DB] Backend check-user unavailable:', err.message);
   }
 
-  return null;
+  return findUser(identifier);
 }
 
 /**
@@ -481,6 +493,46 @@ export function registerUser(userData) {
     success: true,
     user: newUser,
   };
+}
+
+/**
+ * Asynchronously register a new user and await Supabase persistence.
+ * Guarantees that the new user is saved in Supabase so other devices can log in immediately.
+ * @param {object} userData
+ * @returns {Promise<{ success: boolean, message?: string, user?: object }>}
+ */
+export async function registerUserAsync(userData) {
+  const localRes = registerUser(userData);
+  if (!localRes.success) return localRes;
+
+  try {
+    const res = await fetch('/api/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData),
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      if (data.user) {
+        const users = getUsers();
+        const idx = users.findIndex(
+          (u) => u.email.toLowerCase() === data.user.email?.toLowerCase()
+        );
+        if (idx !== -1) {
+          users[idx] = { ...users[idx], ...data.user, password: userData.password };
+        } else {
+          users.push({ ...data.user, password: userData.password });
+        }
+        saveUsers(users);
+        return { success: true, user: users[idx !== -1 ? idx : users.length - 1] };
+      }
+    }
+  } catch (err) {
+    console.warn('[DB] Supabase register error:', err.message);
+  }
+
+  return localRes;
 }
 
 /**
@@ -603,6 +655,7 @@ export async function syncUsersFromSupabase() {
               name: remoteUser.name || merged[idx].name,
               username: remoteUser.username || merged[idx].username,
               institution: remoteUser.institution || merged[idx].institution,
+              password: remoteUser.password || merged[idx].password,
               trustedDevices: Array.isArray(remoteUser.trustedDevices)
                 ? remoteUser.trustedDevices
                 : merged[idx].trustedDevices,
@@ -613,7 +666,7 @@ export async function syncUsersFromSupabase() {
               username: remoteUser.username || remoteUser.email.split('@')[0],
               email: remoteUser.email,
               institution: remoteUser.institution || '',
-              password: 'password123',
+              password: remoteUser.password || 'password123',
               trustedDevices: Array.isArray(remoteUser.trustedDevices)
                 ? remoteUser.trustedDevices
                 : [],

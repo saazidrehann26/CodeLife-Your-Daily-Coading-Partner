@@ -36,9 +36,9 @@ export default function ForgotPasswordPage({ onNavigate, onOtpSent }) {
     }
 
     // 2. Database validation: check if email or username is present in database
-    let existingUser = findUser(trimmed);
+    let existingUser = await findUserAsync(trimmed, true);
     if (!existingUser) {
-      existingUser = await findUserAsync(trimmed);
+      existingUser = findUser(trimmed);
     }
     if (!existingUser) {
       setErrorMsg('This email/username is not found in our database. Please check your spelling or sign up.');

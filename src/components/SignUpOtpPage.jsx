@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import SphericalOtpInput from './SphericalOtpInput';
 import OtpTimer from './OtpTimer';
 import { generateOtp, sendSignUpVerificationOtp } from '../services/emailService';
-import { registerUser } from '../services/dbService';
+import { registerUser, registerUserAsync } from '../services/dbService';
 import { initializeNewUserData } from '../services/dashboardService';
 import BrandLogo from './BrandLogo';
 import './AuthPages.css';
@@ -30,7 +30,7 @@ export default function SignUpOtpPage({ signUpData, onNavigate, onVerificationSu
     setErrorMessage('');
     setIsVerifying(true);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       if (isExpired) {
         setErrorMessage('This verification code has expired. Please request a new one below.');
         setIsVerifying(false);
@@ -39,11 +39,16 @@ export default function SignUpOtpPage({ signUpData, onNavigate, onVerificationSu
 
       // Validate OTP (also permit test fallback '12345')
       if (enteredCode === expectedOtp || enteredCode === '12345') {
-        // Save user into persistent database and initialize zeroed practice data
+        // Save user into persistent database & Supabase and initialize zeroed practice data
         let registeredUser = null;
         if (signUpData) {
-          const regRes = registerUser(signUpData);
-          registeredUser = regRes?.user || signUpData;
+          try {
+            const regRes = await registerUserAsync(signUpData);
+            registeredUser = regRes?.user || signUpData;
+          } catch {
+            const regRes = registerUser(signUpData);
+            registeredUser = regRes?.user || signUpData;
+          }
           if (signUpData.username) {
             initializeNewUserData(signUpData.username, signUpData);
           }

@@ -194,10 +194,11 @@ export default function LoginPage({
     }
 
     // Database verification on Sign In:
-    // Ensure every single time that the user already exists in the database!
-    let existingUser = findUser(trimmedUser);
+    // Always verify against Supabase cloud database first (forceRefresh=true)
+    // so accounts registered on other devices are recognized immediately!
+    let existingUser = await findUserAsync(trimmedUser, true);
     if (!existingUser) {
-      existingUser = await findUserAsync(trimmedUser);
+      existingUser = findUser(trimmedUser);
     }
     if (!existingUser) {
       showToast('No account found in our database for this username or email. Please sign up first.', 'error');
