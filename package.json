@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint src",
+    "test": "node --test test/*.test.js",
     "server": "node server.js",
     "preview": "vite preview",
     "predeploy": "npm run build",

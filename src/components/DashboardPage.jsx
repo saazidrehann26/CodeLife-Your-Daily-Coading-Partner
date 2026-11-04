@@ -14,6 +14,7 @@ import {
   getActiveUser,
   getFileExtension,
 } from '../services/dashboardService';
+import { hasGroupChallengeNotification } from '../services/groupChallengeService';
 import './DashboardPage.css';
 import OnlineCompiler from './OnlineCompiler';
 
@@ -71,6 +72,11 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
   // Reactive triggers for Code Store and Streak updates
   const [streakTrigger, setStreakTrigger] = useState(0);
   const [codeStoreTrigger, setCodeStoreTrigger] = useState(0);
+
+  // Group Challenge notification badge dot
+  const hasGroupNotifications = useMemo(() => {
+    return hasGroupChallengeNotification(profile.username || activeUserSession.username);
+  }, [profile.username, activeUserSession.username]);
 
   const streakData = useMemo(() => {
     return getUserStreakData(profile.username, streakTrigger);
@@ -479,8 +485,25 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
           <span className="dash-brand-title">CodeLife</span>
         </div>
 
-        {/* Top Navbar Right Controls: User Profile Pill */}
+        {/* Top Navbar Right Controls: Group Challenge & User Profile Pill */}
         <div className="dash-nav-links">
+          {/* Top-Level Group Challenge Navigation Button */}
+          <button
+            type="button"
+            className="spherical-btn dash-group-challenge-btn"
+            onClick={() => (onNavigate ? onNavigate('group-challenge') : null)}
+            title="Friend-circle team challenge (Team A vs Team B)"
+          >
+            <svg className="group-challenge-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span>Group Challenge</span>
+            {hasGroupNotifications && <span className="dash-badge-dot" />}
+          </button>
+
           {/* Authenticated User Profile Pill */}
           <div
             className="dash-user-pill"
@@ -530,6 +553,21 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
 
             {/* Quick Navigation Menu Card */}
             <div className="dash-glass-card sidebar-menu-card">
+              <button
+                type="button"
+                className="sidebar-nav-btn"
+                onClick={() => (onNavigate ? onNavigate('group-challenge') : null)}
+              >
+                <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                </svg>
+                <span>Group Challenge</span>
+                {hasGroupNotifications && <span className="sidebar-badge-dot" />}
+              </button>
+
               <button
                 type="button"
                 className="sidebar-nav-btn"

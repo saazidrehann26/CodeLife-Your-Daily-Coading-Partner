@@ -387,6 +387,7 @@
 }
 
 .sidebar-nav-btn {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: flex-start;
@@ -407,6 +408,35 @@
     inset -1.5px -1.5px 3px rgba(0, 0, 0, 0.6);
   transition: all 0.25s ease;
   box-sizing: border-box;
+}
+
+/* Top Navbar Group Challenge Button */
+.dash-group-challenge-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  padding: 8px 18px;
+}
+
+.dash-group-challenge-btn .group-challenge-icon {
+  width: 16px;
+  height: 16px;
+  stroke: #e6c4b4;
+  flex-shrink: 0;
+}
+
+.dash-badge-dot,
+.sidebar-badge-dot {
+  position: absolute;
+  top: 4px;
+  right: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
 }
 
 .sidebar-nav-btn:hover {

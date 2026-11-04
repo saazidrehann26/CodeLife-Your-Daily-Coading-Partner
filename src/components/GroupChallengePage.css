@@ -1,0 +1,631 @@
+/**
+ * GroupChallengePage.css
+ * Dark Cocoa glassmorphic theme matching Dashboard & Landing styles
+ */
+
+.gc-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background-color: #140d0c;
+  background-image: url('/log_in_page_bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #ffffff;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+  box-sizing: border-box;
+}
+
+.gc-wrapper::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at 50% 35%, transparent 70%, rgba(18, 10, 9, 0.45) 100%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ==========================================================================
+   1. NAVBAR
+   ========================================================================== */
+.gc-navbar {
+  position: sticky;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 100;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 28px;
+  background: rgba(24, 15, 13, 0.88);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border-bottom: 1px solid rgba(225, 175, 155, 0.28);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.gc-brand-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.gc-brand-logo-frame {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #ffffff;
+  padding: 2.5px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1.5px solid rgba(225, 175, 155, 0.45);
+  box-shadow: 0 0 14px rgba(225, 175, 155, 0.22);
+  transition: transform 0.3s ease;
+}
+
+.gc-brand-wrap:hover .gc-brand-logo-frame {
+  transform: scale(1.05);
+}
+
+.gc-brand-logo-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.gc-brand-title {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: 21px;
+  font-weight: 700;
+  color: #ffffff;
+  letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 14px rgba(255, 255, 255, 0.22);
+}
+
+.gc-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Nav Button with active swords styling */
+.gc-nav-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 9999px;
+  background: linear-gradient(145deg, #6c4942 0%, #4b302a 60%, #3a231f 100%);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 
+    0 4px 14px rgba(0, 0, 0, 0.35),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.3);
+  transition: all 0.25s ease;
+  position: relative;
+  text-decoration: none;
+}
+
+.gc-nav-btn:hover {
+  background: linear-gradient(145deg, #7c544c 0%, #583933 60%, #442a25 100%);
+  border-color: rgba(230, 196, 180, 0.5);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.45), 0 0 14px rgba(230, 196, 180, 0.25);
+  transform: translateY(-1px);
+}
+
+.gc-nav-btn.active {
+  background: linear-gradient(145deg, #8d5e54 0%, #633932 60%, #4a2823 100%);
+  border: 1.5px solid #ffffff;
+  box-shadow: 
+    0 0 18px rgba(230, 196, 180, 0.45),
+    inset 1px 1px 2px rgba(255, 255, 255, 0.4);
+}
+
+.gc-nav-badge-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 9px;
+  height: 9px;
+  background: #ff5252;
+  border-radius: 50%;
+  border: 2px solid #140d0c;
+  box-shadow: 0 0 8px #ff5252;
+}
+
+/* ==========================================================================
+   2. MAIN CONTENT CONTAINER
+   ========================================================================== */
+.gc-container {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 30px 24px 60px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+/* Glass Card Component */
+.gc-glass-card {
+  background: rgba(28, 17, 15, 0.88);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  border: 1px solid rgba(225, 175, 155, 0.28);
+  border-radius: 24px;
+  padding: 24px 28px;
+  box-shadow: 
+    0 16px 40px rgba(0, 0, 0, 0.55),
+    inset 0 1px 1px rgba(255, 255, 255, 0.18);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Hero Banner */
+.gc-hero-banner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 20px;
+  padding: 28px 34px;
+  background: linear-gradient(135deg, rgba(65, 36, 31, 0.92) 0%, rgba(38, 20, 17, 0.88) 100%);
+}
+
+.gc-hero-text-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.gc-hero-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: #e6c4b4;
+}
+
+.gc-hero-title {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: clamp(28px, 3.4vw, 38px);
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.15;
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6), 0 0 20px rgba(255, 255, 255, 0.25);
+}
+
+.gc-hero-subtitle {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+  margin: 0;
+  max-width: 600px;
+  line-height: 1.45;
+}
+
+.gc-hero-actions-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+/* Pending Invites Banner */
+.gc-invites-banner {
+  background: linear-gradient(145deg, rgba(80, 42, 28, 0.95), rgba(46, 22, 17, 0.92));
+  border: 1.5px solid rgba(240, 180, 150, 0.4);
+  padding: 18px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.gc-invites-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.gc-invites-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.gc-invite-item-card {
+  background: rgba(20, 11, 9, 0.85);
+  border: 1px solid rgba(225, 175, 155, 0.25);
+  border-radius: 14px;
+  padding: 12px 16px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.gc-invite-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gc-invite-circle-name {
+  font-weight: 700;
+  font-size: 14.5px;
+  color: #ffffff;
+}
+
+.gc-invite-inviter {
+  font-size: 12px;
+  color: #e6c4b4;
+}
+
+.gc-invite-actions {
+  display: flex;
+  gap: 6px;
+}
+
+.gc-invite-btn-accept {
+  background: #2e7d32;
+  border: 1px solid #4caf50;
+  color: #ffffff;
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gc-invite-btn-accept:hover {
+  background: #388e3c;
+  box-shadow: 0 0 10px rgba(76, 175, 80, 0.5);
+}
+
+.gc-invite-btn-decline {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.7);
+  padding: 6px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gc-invite-btn-decline:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ==========================================================================
+   3. SECTION HEADINGS & GRIDS
+   ========================================================================== */
+.gc-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.gc-heading {
+  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+}
+
+.gc-heading-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #e6c4b4;
+  box-shadow: 0 0 10px #e6c4b4;
+}
+
+/* Circles Grid */
+.gc-circles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 16px;
+}
+
+.gc-circle-card {
+  background: rgba(24, 15, 13, 0.84);
+  border: 1px solid rgba(225, 175, 155, 0.2);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  transition: all 0.25s ease;
+}
+
+.gc-circle-card:hover {
+  background: rgba(38, 22, 19, 0.94);
+  border-color: rgba(230, 196, 180, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.5);
+}
+
+.gc-circle-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.gc-circle-name {
+  font-size: 18px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0 0 4px 0;
+}
+
+.gc-circle-meta-text {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Status Badges */
+.gc-status-badge {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  white-space: nowrap;
+}
+
+.gc-badge-live {
+  background: rgba(244, 67, 54, 0.25);
+  border: 1px solid rgba(244, 67, 54, 0.6);
+  color: #ff8a80;
+  box-shadow: 0 0 12px rgba(244, 67, 54, 0.35);
+  animation: pulseLiveBadge 2s infinite ease-in-out;
+}
+
+@keyframes pulseLiveBadge {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.03); }
+}
+
+.gc-badge-lobby {
+  background: rgba(255, 152, 0, 0.22);
+  border: 1px solid rgba(255, 152, 0, 0.55);
+  color: #ffcc80;
+}
+
+.gc-badge-idle {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.gc-circle-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 12px;
+  border-top: 1px solid rgba(225, 175, 155, 0.12);
+}
+
+/* ==========================================================================
+   4. MEMBER SEARCH COMPONENT
+   ========================================================================== */
+.gc-search-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.gc-search-bar-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.gc-search-icon {
+  position: absolute;
+  left: 16px;
+  color: rgba(225, 175, 155, 0.7);
+  pointer-events: none;
+}
+
+.gc-search-input {
+  width: 100%;
+  padding: 14px 42px 14px 46px;
+  background: rgba(18, 10, 9, 0.85);
+  border: 1.5px solid rgba(225, 175, 155, 0.28);
+  border-radius: 9999px;
+  color: #ffffff;
+  font-family: inherit;
+  font-size: 14.5px;
+  outline: none;
+  box-sizing: border-box;
+  transition: all 0.25s ease;
+}
+
+.gc-search-input:focus {
+  border-color: #ffffff;
+  box-shadow: 0 0 16px rgba(230, 196, 180, 0.35);
+  background: rgba(24, 13, 11, 0.95);
+}
+
+.gc-search-clear-btn {
+  position: absolute;
+  right: 14px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.gc-search-clear-btn:hover {
+  color: #ffffff;
+}
+
+/* Search Results Grid */
+.gc-search-results-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+  margin-top: 6px;
+}
+
+.gc-user-card {
+  background: rgba(22, 13, 11, 0.85);
+  border: 1px solid rgba(225, 175, 155, 0.2);
+  border-radius: 16px;
+  padding: 14px 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.gc-user-card:hover {
+  background: rgba(38, 22, 19, 0.95);
+  border-color: rgba(230, 196, 180, 0.45);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+}
+
+.gc-user-card-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  overflow: hidden;
+}
+
+.gc-user-card-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(230, 196, 180, 0.45);
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #180f0e;
+}
+
+.gc-user-card-texts {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.gc-user-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.gc-user-card-username {
+  font-size: 13px;
+  color: #e6c4b4;
+  font-weight: 600;
+}
+
+.gc-user-card-institution {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+}
+
+.gc-user-card-view-btn {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 6px 12px;
+  border-radius: 999px;
+  white-space: nowrap;
+  transition: all 0.2s;
+}
+
+.gc-user-card:hover .gc-user-card-view-btn {
+  background: #ffffff;
+  color: #140d0c;
+  font-weight: 600;
+}
+
+/* Match History Table / Cards */
+.gc-history-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.gc-history-row {
+  background: rgba(22, 13, 11, 0.75);
+  border: 1px solid rgba(225, 175, 155, 0.16);
+  border-radius: 14px;
+  padding: 14px 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.gc-history-result-badge {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 999px;
+}
+
+.gc-history-win {
+  background: rgba(46, 125, 50, 0.25);
+  border: 1px solid rgba(76, 175, 80, 0.5);
+  color: #a5d6a7;
+}
+
+.gc-history-loss {
+  background: rgba(198, 40, 40, 0.25);
+  border: 1px solid rgba(244, 67, 54, 0.5);
+  color: #ef9a9a;
+}

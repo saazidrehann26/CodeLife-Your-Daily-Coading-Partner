@@ -7,6 +7,7 @@ import NewPasswordPage from './components/NewPasswordPage';
 import SignUpOtpPage from './components/SignUpOtpPage';
 import DeviceVerificationPage from './components/DeviceVerificationPage';
 import DashboardPage from './components/DashboardPage';
+import GroupChallengePage from './components/GroupChallengePage';
 import CompanyLogo from './components/CompanyLogo';
 import { setActiveUser, getActiveUser } from './services/dashboardService';
 import './components/LoginPage.css';
@@ -23,6 +24,7 @@ const VALID_PAGES = [
   'signup-otp',
   'device-verification',
   'dashboard',
+  'group-challenge',
 ];
 
 /**
@@ -51,11 +53,21 @@ const DASHBOARD_HASHES = [
 const getPageFromHash = () => {
   if (typeof window === 'undefined') return 'landing';
 
+  // Check if browser URL is navigating to /group-challenge
+  const pathname = (window.location.pathname || '').replace(/^\//, '').toLowerCase();
+  if (pathname === 'group-challenge' || pathname.startsWith('group-challenge/')) {
+    return 'group-challenge';
+  }
+
   // On fresh window session start (e.g. opening localhost in a new tab or window),
   // always start from the home page ('landing')
   const sessionStarted = sessionStorage.getItem('codelife_session_started');
   if (!sessionStarted) {
     sessionStorage.setItem('codelife_session_started', 'true');
+    const directHash = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase();
+    if (directHash === 'group-challenge' || directHash.startsWith('group-challenge/') || directHash.startsWith('group-challenge-')) {
+      return 'group-challenge';
+    }
     if (window.location.hash && window.location.hash !== '#landing') {
       window.history.replaceState({ page: 'landing' }, '', window.location.pathname);
     }
@@ -63,6 +75,10 @@ const getPageFromHash = () => {
   }
 
   const hash = window.location.hash.replace(/^#\/?/, '').trim().toLowerCase();
+
+  if (hash === 'group-challenge' || hash.startsWith('group-challenge/') || hash.startsWith('group-challenge-') || hash.startsWith('group-challenge?')) {
+    return 'group-challenge';
+  }
   
   if (DASHBOARD_HASHES.some((dh) => hash === dh || hash.startsWith(dh + '-') || hash.startsWith(dh + '/'))) {
     return 'dashboard';
@@ -225,6 +241,30 @@ export default function App() {
     );
   }
 
+  // When on Group Challenge page
+  if (currentPage === 'group-challenge') {
+    const verifiedUser = getActiveUser() || currentUser;
+    if (!verifiedUser) {
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('codelife_return_page', 'group-challenge');
+      }
+      navigateTo('signin', 'Please sign in to access Group Challenge.', true, true);
+      return null;
+    }
+
+    return (
+      <GroupChallengePage
+        currentUser={verifiedUser}
+        onNavigate={navigateTo}
+        onSignOut={() => {
+          setActiveUser(null);
+          setCurrentUser(null);
+          navigateTo('landing');
+        }}
+      />
+    );
+  }
+
   // When on the main authenticated Dashboard / Platform page
   if (currentPage === 'dashboard') {
     // Strictly ensure user exists in database before allowing access to dashboard
@@ -284,7 +324,15 @@ export default function App() {
               setActiveUser(user);
               setCurrentUser(user);
             }
-            navigateTo('landing', null, true, true);
+            let targetPage = 'landing';
+            if (typeof window !== 'undefined') {
+              const returnPage = sessionStorage.getItem('codelife_return_page');
+              if (returnPage && VALID_PAGES.includes(returnPage)) {
+                sessionStorage.removeItem('codelife_return_page');
+                targetPage = returnPage;
+              }
+            }
+            navigateTo(targetPage, null, true, true);
           }}
         />
       )}
@@ -323,7 +371,15 @@ export default function App() {
               setActiveUser(activeUserObj);
               setCurrentUser(activeUserObj);
             }
-            navigateTo('dashboard', null, true, true);
+            let targetPage = 'dashboard';
+            if (typeof window !== 'undefined') {
+              const returnPage = sessionStorage.getItem('codelife_return_page');
+              if (returnPage && VALID_PAGES.includes(returnPage)) {
+                sessionStorage.removeItem('codelife_return_page');
+                targetPage = returnPage;
+              }
+            }
+            navigateTo(targetPage, null, true, true);
           }}
           onResendSuccess={handleSignUpResendSuccess}
         />
@@ -339,7 +395,15 @@ export default function App() {
               setActiveUser(activeUserObj);
               setCurrentUser(activeUserObj);
             }
-            navigateTo('dashboard', `Welcome back, ${activeUserObj.name || activeUserObj.username}!`, true, true);
+            let targetPage = 'dashboard';
+            if (typeof window !== 'undefined') {
+              const returnPage = sessionStorage.getItem('codelife_return_page');
+              if (returnPage && VALID_PAGES.includes(returnPage)) {
+                sessionStorage.removeItem('codelife_return_page');
+                targetPage = returnPage;
+              }
+            }
+            navigateTo(targetPage, `Welcome back, ${activeUserObj.name || activeUserObj.username}!`, true, true);
           }}
           onResendSuccess={(newOtp, emailSuccess) => {
             setDeviceVerificationData((prev) => ({

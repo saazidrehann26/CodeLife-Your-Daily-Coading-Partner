@@ -299,6 +299,139 @@ app.get('/api/auth/users', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Group Challenge & Member Search Routes (Stage 1)
+// ---------------------------------------------------------------------------
+const searchRateLimitMap = new Map();
+
+function checkSearchRateLimit(ip) {
+  const now = Date.now();
+  const windowMs = 60 * 1000;
+  const max = 30;
+  const timestamps = (searchRateLimitMap.get(ip) || []).filter((t) => now - t < windowMs);
+  if (timestamps.length >= max) return false;
+  timestamps.push(now);
+  searchRateLimitMap.set(ip, timestamps);
+  return true;
+}
+
+/**
+ * Member Search: Case-insensitive, prefix/partial match, debounced, min 2 chars
+ * Strictly rate-limited and sanitized to protect user privacy.
+ */
+app.get('/api/users/search', async (req, res) => {
+  const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || 'unknown';
+  if (!checkSearchRateLimit(clientIp)) {
+    return res.status(429).json({ error: 'Search rate limit exceeded. Please wait a minute.' });
+  }
+
+  const { q = '', offset = 0, limit = 10 } = req.query || {};
+  const query = String(q).trim().toLowerCase();
+
+  if (query.length < 2) {
+    return res.json({ results: [], total: 0, hasMore: false });
+  }
+
+  try {
+    let users = [];
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (!error && Array.isArray(data?.users)) {
+        users = data.users.map((u) => ({
+          username: u.user_metadata?.username || '',
+          name: u.user_metadata?.name || '',
+          photoUrl: u.user_metadata?.photoUrl || '/codelife_logo_white_bg.png',
+          institution: u.user_metadata?.institution || 'Not specified',
+          classGrade: u.user_metadata?.classGrade || 'Not specified',
+          privacySettings: u.user_metadata?.privacySettings || { showInstitution: true, showStats: true },
+        }));
+      }
+    }
+
+    const matched = users.filter((u) => {
+      const uname = (u.username || '').toLowerCase();
+      const name = (u.name || '').toLowerCase();
+      return uname.includes(query) || name.includes(query);
+    });
+
+    const parsedOffset = Math.max(0, parseInt(offset, 10) || 0);
+    const parsedLimit = Math.min(25, Math.max(1, parseInt(limit, 10) || 10));
+    const sliced = matched.slice(parsedOffset, parsedOffset + parsedLimit);
+
+    // Sanitized DTO: Never exposes email, password, tokens, phone
+    const results = sliced.map((u) => ({
+      username: u.username,
+      name: u.name,
+      photoUrl: u.photoUrl,
+      institution: u.privacySettings?.showInstitution !== false ? u.institution : 'Hidden by user',
+      classGrade: u.privacySettings?.showInstitution !== false ? u.classGrade : 'Hidden by user',
+    }));
+
+    return res.json({
+      results,
+      total: matched.length,
+      hasMore: parsedOffset + parsedLimit < matched.length,
+    });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+/**
+ * Public Member Profile Endpoint
+ * Strictly sanitized response DTO respecting user's privacy settings.
+ */
+app.get('/api/users/:username/public-profile', async (req, res) => {
+  const username = String(req.params.username || '').trim().toLowerCase();
+  if (!username) {
+    return res.status(400).json({ error: 'Username is required' });
+  }
+
+  try {
+    let found = null;
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (!error && Array.isArray(data?.users)) {
+        found = data.users.find(
+          (u) => (u.user_metadata?.username || '').toLowerCase() === username
+        );
+      }
+    }
+
+    if (!found) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const meta = found.user_metadata || {};
+    const privacy = meta.privacySettings || { showInstitution: true, showStats: true, allowStrangerInvites: true };
+    const institutionVisible = privacy.showInstitution !== false;
+    const statsVisible = privacy.showStats !== false;
+
+    // Strict Sanitized DTO
+    const publicProfile = {
+      username: meta.username || username,
+      name: meta.name || username,
+      photoUrl: meta.photoUrl || '/codelife_logo_white_bg.png',
+      institution: institutionVisible ? (meta.institution || 'Not specified') : 'Hidden by user',
+      classGrade: institutionVisible ? (meta.classGrade || 'Not specified') : 'Hidden by user',
+      bio: meta.bio || '',
+      totalProblemsSolved: statsVisible ? (meta.total_problems_solved || 0) : null,
+      currentStreak: statsVisible ? (meta.current_streak || 0) : null,
+      longestStreak: statsVisible ? (meta.longest_streak || 0) : null,
+      matchesPlayed: statsVisible ? (meta.matches_played || 0) : null,
+      matchesWon: statsVisible ? (meta.matches_won || 0) : null,
+      memberSince: found.created_at ? new Date(found.created_at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : 'Member',
+      allowStrangerInvites: privacy.allowStrangerInvites !== false,
+      showInstitution: institutionVisible,
+      showStats: statsVisible,
+    };
+
+    return res.json({ user: publicProfile });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 /**
  * Backend route for Judge0 API
  * Keeps API keys completely private on the server.

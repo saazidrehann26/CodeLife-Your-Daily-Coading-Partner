@@ -218,6 +218,37 @@
   text-shadow: 0 0 12px rgba(255, 255, 255, 0.3);
 }
 
+/* Group Challenge Navigation Item */
+.landing-group-challenge-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-weight: 600;
+  color: #f5e6e1;
+}
+
+.landing-group-challenge-btn:hover {
+  background: rgba(225, 175, 155, 0.16);
+  color: #ffffff;
+}
+
+.landing-group-challenge-btn.active {
+  background: rgba(225, 175, 155, 0.22);
+  color: #ffffff;
+  border: 1px solid rgba(225, 175, 155, 0.4);
+}
+
+.landing-badge-dot {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #ef4444;
+  box-shadow: 0 0 6px #ef4444;
+}
+
 /* Authenticated User Pill on Landing Page */
 .landing-user-badge {
   display: inline-flex;
