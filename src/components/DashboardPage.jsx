@@ -485,7 +485,7 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
           <span className="dash-brand-title">CodeLife</span>
         </div>
 
-        {/* Top Navbar Right Controls: User Profile Pill */}
+        {/* Top Navbar Right Controls: User Profile Pill & Log Out */}
         <div className="dash-nav-links">
           {/* Authenticated User Profile Pill */}
           <div
@@ -496,6 +496,18 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
           >
             <span className="dash-user-name">{profile.fullName}</span>
           </div>
+
+          {/* Log Out Button */}
+          {onSignOut && (
+            <button
+              type="button"
+              className="spherical-btn spherical-btn-sm"
+              onClick={onSignOut}
+              title="Sign out of your active CodeLife session"
+            >
+              Log Out
+            </button>
+          )}
         </div>
       </header>
 
@@ -1273,43 +1285,6 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                   </div>
                   <button type="button" className="spherical-btn spherical-btn-sm">
                     Edit →
-                  </button>
-                </div>
-              </div>
-
-              {/* Option 3: Return to Home / Landing Page */}
-              <div className="recent-problem-card" style={{ cursor: 'pointer' }} onClick={() => onNavigate('landing')}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h3 className="problem-title" style={{ fontSize: '17px', color: '#ffffff' }}>Return to Landing Page</h3>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#ffffff' }}>
-                      View the platform introduction and showcase page.
-                    </p>
-                  </div>
-                  <button type="button" className="spherical-btn spherical-btn-sm">
-                    Home →
-                  </button>
-                </div>
-              </div>
-
-              {/* Option 4: Sign Out */}
-              <div
-                className="recent-problem-card"
-                style={{ cursor: 'pointer', borderColor: 'rgba(239, 83, 80, 0.3)' }}
-                onClick={() => {
-                  setActiveModal(null);
-                  if (onSignOut) onSignOut();
-                }}
-              >
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div>
-                    <h3 className="problem-title" style={{ fontSize: '17px', color: '#ffffff' }}>Sign Out</h3>
-                    <p style={{ margin: 0, fontSize: '13px', color: '#ffffff' }}>
-                      Sign out of your active CodeLife session.
-                    </p>
-                  </div>
-                  <button type="button" className="spherical-btn spherical-btn-sm">
-                    Log Out
                   </button>
                 </div>
               </div>
