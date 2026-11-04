@@ -10,6 +10,7 @@ import DashboardPage from './components/DashboardPage';
 import GroupChallengePage from './components/GroupChallengePage';
 import CompanyLogo from './components/CompanyLogo';
 import { setActiveUser, getActiveUser } from './services/dashboardService';
+import { deleteUser, syncUsersFromSupabase } from './services/dbService';
 import './components/LoginPage.css';
 
 /**
@@ -219,16 +220,107 @@ export default function App() {
     }));
   };
 
+  /**
+   * Strictly verify if the active user session still exists in the database.
+   * If the user was removed from the database, invalidate session and redirect to signin.
+   */
+  const verifyCurrentSession = useCallback(async () => {
+    const active = getActiveUser();
+    if (!active) {
+      if (currentUser) {
+        setCurrentUser(null);
+        setActiveUser(null);
+      }
+      if (currentPage === 'dashboard' || currentPage === 'group-challenge') {
+        navigateTo('signin', 'Your account has been deleted or is no longer active.', true, true);
+      }
+      return null;
+    }
+
+    // Remote database verification if online
+    if (typeof window !== 'undefined' && window.navigator?.onLine) {
+      try {
+        const res = await fetch('/api/auth/check-user', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ identifier: active.username || active.email }),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.exists === false) {
+            // User was removed from Supabase! Purge local data and redirect
+            deleteUser(active.username || active.email);
+            setCurrentUser(null);
+            setActiveUser(null);
+            if (currentPage === 'dashboard' || currentPage === 'group-challenge') {
+              navigateTo('signin', 'Your account has been removed from the database.', true, true);
+            }
+            return null;
+          }
+        }
+      } catch {
+        // Fallback to local cache verification
+      }
+    }
+
+    if (!currentUser || currentUser.username !== active.username) {
+      setCurrentUser(active);
+    }
+    return active;
+  }, [currentUser, currentPage, navigateTo]);
+
+  // Live session listener & heartbeat check
+  useEffect(() => {
+    const handleAuthCheck = () => {
+      verifyCurrentSession();
+      syncUsersFromSupabase();
+    };
+
+    const handleAuthInvalidated = () => {
+      setCurrentUser(null);
+      setActiveUser(null);
+      if (currentPage === 'dashboard' || currentPage === 'group-challenge') {
+        navigateTo('signin', 'Your account was deleted from the database.', true, true);
+      }
+    };
+
+    window.addEventListener('focus', handleAuthCheck);
+    window.addEventListener('visibilitychange', handleAuthCheck);
+    window.addEventListener('codelife_auth_invalidated', handleAuthInvalidated);
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'codelife_active_user' || e.key === 'daily_code_practice_users_db') {
+        handleAuthCheck();
+      }
+    });
+
+    // Heartbeat check every 3 seconds while on authenticated pages
+    const interval = setInterval(() => {
+      if (currentPage === 'dashboard' || currentPage === 'group-challenge') {
+        verifyCurrentSession();
+      }
+    }, 3000);
+
+    return () => {
+      window.removeEventListener('focus', handleAuthCheck);
+      window.removeEventListener('visibilitychange', handleAuthCheck);
+      window.removeEventListener('codelife_auth_invalidated', handleAuthInvalidated);
+      clearInterval(interval);
+    };
+  }, [currentPage, navigateTo, verifyCurrentSession]);
+
   // When on initial intro landing page, render LandingPage with fixed background & smooth scrolling
   if (currentPage === 'landing') {
+    const verifiedUser = getActiveUser();
     return (
       <LandingPage
-        currentUser={currentUser}
+        currentUser={verifiedUser}
         onNavigate={navigateTo}
         onGetStarted={() => {
-          if (currentUser || getActiveUser()) {
+          const active = getActiveUser();
+          if (active) {
             navigateTo('dashboard');
           } else {
+            if (currentUser) setCurrentUser(null);
             navigateTo('signin');
           }
         }}
@@ -243,8 +335,9 @@ export default function App() {
 
   // When on Group Challenge page
   if (currentPage === 'group-challenge') {
-    const verifiedUser = getActiveUser() || currentUser;
+    const verifiedUser = getActiveUser();
     if (!verifiedUser) {
+      if (currentUser) setCurrentUser(null);
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('codelife_return_page', 'group-challenge');
       }
@@ -270,6 +363,7 @@ export default function App() {
     // Strictly ensure user exists in database before allowing access to dashboard
     const verifiedUser = getActiveUser();
     if (!verifiedUser) {
+      if (currentUser) setCurrentUser(null);
       navigateTo('signin', 'Please sign in to access your dashboard.', true, true);
       return null;
     }

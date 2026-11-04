@@ -57,12 +57,21 @@ const PRACTICE_LANGUAGES = [
 export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
   // Current active user session (from props or storage)
   const activeUserSession = useMemo(
-    () => currentUser || getActiveUser() || { name: 'Coder', username: 'coder' },
+    () => getActiveUser() || currentUser || null,
     [currentUser]
   );
 
+  // If user is deleted or session invalidated, immediately log out and redirect
+  useEffect(() => {
+    const verified = getActiveUser();
+    if (!verified) {
+      if (onSignOut) onSignOut();
+    }
+  }, [onSignOut]);
+
   const [profileOverride, setProfileOverride] = useState(null);
   const profile = useMemo(() => {
+    if (!activeUserSession) return { fullName: 'User', username: 'user' };
     if (profileOverride && profileOverride.username === activeUserSession.username) {
       return profileOverride;
     }
@@ -485,7 +494,7 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
           <span className="dash-brand-title">CodeLife</span>
         </div>
 
-        {/* Top Navbar Right Controls: User Profile Pill & Log Out */}
+        {/* Top Navbar Right Controls: User Profile Pill */}
         <div className="dash-nav-links">
           {/* Authenticated User Profile Pill */}
           <div
@@ -496,18 +505,6 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
           >
             <span className="dash-user-name">{profile.fullName}</span>
           </div>
-
-          {/* Log Out Button */}
-          {onSignOut && (
-            <button
-              type="button"
-              className="spherical-btn spherical-btn-sm"
-              onClick={onSignOut}
-              title="Sign out of your active CodeLife session"
-            >
-              Log Out
-            </button>
-          )}
         </div>
       </header>
 
@@ -598,6 +595,22 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                 </svg>
                 <span>Settings</span>
               </button>
+
+              {onSignOut && (
+                <button
+                  type="button"
+                  className="sidebar-nav-btn"
+                  onClick={onSignOut}
+                  title="Sign out of your active CodeLife session"
+                >
+                  <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  <span>Log Out</span>
+                </button>
+              )}
             </div>
           </aside>
 

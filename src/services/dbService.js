@@ -357,7 +357,7 @@ export function getUsers() {
  * Save users to database cache
  * @param {Array} users
  */
-function saveUsers(users) {
+export function saveUsers(users) {
   try {
     localStorage.setItem(DB_STORAGE_KEY, JSON.stringify(users));
   } catch (err) {
@@ -643,6 +643,91 @@ export async function isUserInDatabaseAsync(identifier) {
 }
 
 /**
+ * Permanently delete a user from local storage and backend database.
+ * Immediately invalidates active sessions and notifies listeners.
+ * @param {string} identifier - Email or username
+ * @returns {boolean}
+ */
+export function deleteUser(identifier) {
+  if (!identifier) return false;
+  const clean = identifier.trim().toLowerCase();
+  const users = getUsers();
+  const initialLength = users.length;
+  const filtered = users.filter(
+    (u) => u.email.toLowerCase() !== clean && u.username.toLowerCase() !== clean
+  );
+
+  saveUsers(filtered);
+
+  // If currently active user was deleted, purge session immediately
+  try {
+    const rawActive = localStorage.getItem('codelife_active_user');
+    if (rawActive) {
+      const active = JSON.parse(rawActive);
+      const aEmail = (active.email || '').toLowerCase();
+      const aUname = (active.username || '').toLowerCase();
+      if (aEmail === clean || aUname === clean) {
+        localStorage.removeItem('codelife_active_user');
+        localStorage.removeItem('codelife_remembered_credentials');
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('codelife_auth_invalidated', { detail: { identifier: clean } }));
+        }
+      }
+    }
+  } catch {
+    localStorage.removeItem('codelife_active_user');
+  }
+
+  // Also notify server to delete from Supabase if online
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    fetch('/api/auth/delete-user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ identifier: clean }),
+    }).catch(() => {});
+  }
+
+  return filtered.length < initialLength;
+}
+
+/**
+ * Verify whether a user currently exists in the database (local and remote check).
+ * @param {string} identifier 
+ * @returns {Promise<boolean>}
+ */
+export async function verifyUserExistsInDatabase(identifier) {
+  if (!identifier || typeof identifier !== 'string') return false;
+  const clean = identifier.trim().toLowerCase();
+
+  // Local check first
+  const local = findUser(clean);
+  if (!local) return false;
+
+  // Remote backend check if online
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    try {
+      const res = await fetch('/api/auth/check-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: clean }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.exists === false) {
+          // User was removed from Supabase! Delete locally as well
+          deleteUser(clean);
+          return false;
+        }
+      }
+    } catch {
+      // Fallback to local on network error
+    }
+  }
+
+  return true;
+}
+
+/**
  * Sync users list from Supabase backend to keep local cache fresh
  */
 export async function syncUsersFromSupabase() {
@@ -650,41 +735,53 @@ export async function syncUsersFromSupabase() {
     const res = await fetch('/api/auth/users');
     if (res.ok) {
       const data = await res.json();
-      if (Array.isArray(data.users) && data.users.length > 0) {
-        const localUsers = getUsers();
-        const merged = [...localUsers];
+      if (Array.isArray(data.users)) {
+        const remoteEmails = new Set(data.users.map((u) => (u.email || '').toLowerCase()));
+        const remoteUsernames = new Set(
+          data.users.map((u) => (u.username || '').toLowerCase()).filter(Boolean)
+        );
 
-        for (const remoteUser of data.users) {
-          const idx = merged.findIndex(
+        const localUsers = getUsers();
+        // If Supabase returned users, it is the authoritative database:
+        // Prune any user in local storage that no longer exists in Supabase!
+        const updatedUsers = data.users.map((remoteUser) => {
+          const localMatch = localUsers.find(
             (u) => u.email.toLowerCase() === remoteUser.email.toLowerCase()
           );
-          if (idx !== -1) {
-            merged[idx] = {
-              ...merged[idx],
-              name: remoteUser.name || merged[idx].name,
-              username: remoteUser.username || merged[idx].username,
-              institution: remoteUser.institution || merged[idx].institution,
-              password: remoteUser.password || merged[idx].password,
-              trustedDevices: Array.isArray(remoteUser.trustedDevices)
-                ? remoteUser.trustedDevices
-                : merged[idx].trustedDevices,
-            };
-          } else {
-            merged.push({
-              name: remoteUser.name || '',
-              username: remoteUser.username || remoteUser.email.split('@')[0],
-              email: remoteUser.email,
-              institution: remoteUser.institution || '',
-              password: remoteUser.password || 'password123',
-              trustedDevices: Array.isArray(remoteUser.trustedDevices)
-                ? remoteUser.trustedDevices
-                : [],
-              createdAt: remoteUser.createdAt || new Date().toISOString(),
-            });
-          }
-        }
+          return {
+            name: remoteUser.name || localMatch?.name || '',
+            username: remoteUser.username || localMatch?.username || remoteUser.email.split('@')[0],
+            email: remoteUser.email,
+            institution: remoteUser.institution || localMatch?.institution || '',
+            password: localMatch?.password || remoteUser.password || 'password123',
+            trustedDevices: Array.isArray(remoteUser.trustedDevices)
+              ? remoteUser.trustedDevices
+              : (localMatch?.trustedDevices || []),
+            createdAt: remoteUser.createdAt || localMatch?.createdAt || new Date().toISOString(),
+          };
+        });
 
-        saveUsers(merged);
+        saveUsers(updatedUsers);
+
+        // Check currently active logged-in user session
+        try {
+          const rawActive = localStorage.getItem('codelife_active_user');
+          if (rawActive) {
+            const active = JSON.parse(rawActive);
+            const aEmail = (active.email || '').toLowerCase();
+            const aUname = (active.username || '').toLowerCase();
+            if (!remoteEmails.has(aEmail) && !remoteUsernames.has(aUname)) {
+              console.warn(`[Auth] Active user "${active.username || active.email}" was deleted from the database. Purging session.`);
+              localStorage.removeItem('codelife_active_user');
+              localStorage.removeItem('codelife_remembered_credentials');
+              if (typeof window !== 'undefined') {
+                window.dispatchEvent(new CustomEvent('codelife_auth_invalidated'));
+              }
+            }
+          }
+        } catch {
+          localStorage.removeItem('codelife_active_user');
+        }
       }
     }
   } catch {

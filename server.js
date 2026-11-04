@@ -299,6 +299,37 @@ app.get('/api/auth/users', async (req, res) => {
   }
 });
 
+/**
+ * Delete user from Supabase database
+ */
+app.post('/api/auth/delete-user', async (req, res) => {
+  try {
+    const { identifier } = req.body || {};
+    if (!identifier) {
+      return res.status(400).json({ error: 'Identifier is required' });
+    }
+
+    if (!supabaseAdmin) {
+      return res.json({ success: true, message: 'Deleted locally' });
+    }
+
+    const user = await findSupabaseUser(identifier);
+    if (user && user.id) {
+      const { error } = await supabaseAdmin.auth.admin.deleteUser(user.id);
+      if (error) {
+        console.error('[Server] Error deleting user from Supabase:', error.message);
+        return res.status(500).json({ error: error.message });
+      }
+      console.log(`[Server] User "${identifier}" (${user.id}) deleted from Supabase database.`);
+    }
+
+    return res.json({ success: true, deleted: true });
+  } catch (err) {
+    console.error('[Server] Delete user exception:', err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Group Challenge & Member Search Routes (Stage 1)
 // ---------------------------------------------------------------------------

@@ -10,6 +10,7 @@ import {
 } from '../services/groupChallengeService';
 import PublicProfileModal from './PublicProfileModal';
 import CircleDetailsView from './CircleDetailsView';
+import { getActiveUser } from '../services/dashboardService';
 import './GroupChallengePage.css';
 
 export default function GroupChallengePage({
@@ -17,6 +18,14 @@ export default function GroupChallengePage({
   onNavigate,
   onSignOut,
 }) {
+  // If user is deleted or session invalidated, immediately log out and redirect
+  useEffect(() => {
+    const verified = getActiveUser();
+    if (!verified) {
+      if (onSignOut) onSignOut();
+    }
+  }, [onSignOut]);
+
   // Circles & Invites
   const [circles, setCircles] = useState(() => (currentUser?.username ? getUserCircles(currentUser.username) : []));
   const [pendingInvites, setPendingInvites] = useState(() => (currentUser?.username ? getPendingCircleInvites(currentUser.username) : []));
