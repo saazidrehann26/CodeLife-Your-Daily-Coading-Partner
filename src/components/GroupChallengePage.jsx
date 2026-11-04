@@ -4,10 +4,12 @@ import {
   getPendingCircleInvites,
   respondCircleInvite,
   createCircle,
+  joinCircleByCode,
   searchUsers,
   getCircleMatchHistory,
 } from '../services/groupChallengeService';
 import PublicProfileModal from './PublicProfileModal';
+import CircleDetailsView from './CircleDetailsView';
 import './GroupChallengePage.css';
 
 export default function GroupChallengePage({
@@ -19,6 +21,7 @@ export default function GroupChallengePage({
   const [circles, setCircles] = useState(() => (currentUser?.username ? getUserCircles(currentUser.username) : []));
   const [pendingInvites, setPendingInvites] = useState(() => (currentUser?.username ? getPendingCircleInvites(currentUser.username) : []));
   const [matchHistory, setMatchHistory] = useState(() => getCircleMatchHistory());
+  const [selectedCircleId, setSelectedCircleId] = useState(null);
 
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -45,6 +48,26 @@ export default function GroupChallengePage({
     if (pendingInvites.length > 0) return true;
     return circles.some((c) => c.status === 'Match live');
   }, [pendingInvites, circles]);
+
+  // URL query or hash detection on initial mount (e.g. #group-challenge?join=CODE or #group-challenge/circle/:id)
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const fullUrl = window.location.href;
+      const match = fullUrl.match(/[?&]join=([a-zA-Z0-9]+)/i);
+      if (match && match[1]) {
+        Promise.resolve().then(() => {
+          setJoinInviteCode(match[1].toUpperCase());
+          setShowJoinModal(true);
+        });
+      }
+      const circleMatch = window.location.hash.match(/group-challenge\/circle\/([a-zA-Z0-9_]+)/i);
+      if (circleMatch && circleMatch[1]) {
+        Promise.resolve().then(() => {
+          setSelectedCircleId(circleMatch[1]);
+        });
+      }
+    }
+  }, []);
 
   // Load updated circle data when user changes
   useEffect(() => {
@@ -128,6 +151,7 @@ export default function GroupChallengePage({
       setCircles(getUserCircles(currentUser.username));
       setNewCircleName('');
       setShowCreateModal(false);
+      setSelectedCircleId(created.id);
     }
   };
 
@@ -135,17 +159,18 @@ export default function GroupChallengePage({
   const handleJoinByCodeSubmit = (e) => {
     e.preventDefault();
     const cleanCode = joinInviteCode.trim().toUpperCase();
-    if (!cleanCode) return;
+    if (!cleanCode || !currentUser?.username) return;
 
-    // Check circles across users
-    const allUserCircles = circles;
-    const found = allUserCircles.find((c) => c.inviteCode === cleanCode);
-    if (found) {
-      setJoinModalError('You are already a member of this circle.');
-      return;
+    const res = joinCircleByCode(currentUser.username, cleanCode);
+    if (res.success && res.circle) {
+      setCircles(getUserCircles(currentUser.username));
+      setShowJoinModal(false);
+      setJoinInviteCode('');
+      setJoinModalError(null);
+      setSelectedCircleId(res.circle.id);
+    } else {
+      setJoinModalError(res.error || 'Invalid or expired circle invite code.');
     }
-
-    setJoinModalError('Invalid or expired circle invite code.');
   };
 
   return (
@@ -242,7 +267,27 @@ export default function GroupChallengePage({
           2. MAIN CONTENT
           ===================================================================== */}
       <main className="gc-container">
-        {/* Hero Banner */}
+        {selectedCircleId ? (
+          <CircleDetailsView
+            circleId={selectedCircleId}
+            currentUser={currentUser}
+            onBack={() => {
+              setSelectedCircleId(null);
+              if (currentUser?.username) {
+                setCircles(getUserCircles(currentUser.username));
+              }
+            }}
+            onCircleDeleted={() => {
+              setSelectedCircleId(null);
+              if (currentUser?.username) {
+                setCircles(getUserCircles(currentUser.username));
+              }
+            }}
+            onNavigate={onNavigate}
+          />
+        ) : (
+          <>
+            {/* Hero Banner */}
         <section className="gc-glass-card gc-hero-banner">
           <div className="gc-hero-text-col">
             <span className="gc-hero-tag">
@@ -362,7 +407,12 @@ export default function GroupChallengePage({
                     : 'gc-badge-idle';
 
                 return (
-                  <div key={c.id} className="gc-circle-card">
+                  <div
+                    key={c.id}
+                    className="gc-circle-card"
+                    onClick={() => setSelectedCircleId(c.id)}
+                    style={{ cursor: 'pointer' }}
+                  >
                     <div className="gc-circle-card-top">
                       <div>
                         <h3 className="gc-circle-name">{c.name}</h3>
@@ -380,7 +430,10 @@ export default function GroupChallengePage({
                       <button
                         type="button"
                         className="spherical-btn spherical-btn-sm"
-                        onClick={() => alert(`Opening Circle: ${c.name}. Ready for Stage 2 circle management.`)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setSelectedCircleId(c.id);
+                        }}
                       >
                         Enter Circle
                       </button>
@@ -523,6 +576,8 @@ export default function GroupChallengePage({
             </div>
           )}
         </section>
+        </>
+      )}
       </main>
 
       {/* =====================================================================

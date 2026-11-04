@@ -1,0 +1,1254 @@
+/* ==========================================================================
+   Team Formation View Styles (Stage 3: Variable Team Size, Captains & Draft)
+   Theme: Dark Cocoa Frosted Glassmorphism
+   ========================================================================== */
+
+.tf-view-container {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+  animation: tfFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes tfFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tf-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.tf-step-tag {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: #e6c4b4;
+  background: rgba(230, 196, 180, 0.12);
+  border: 1px solid rgba(230, 196, 180, 0.25);
+  padding: 6px 14px;
+  border-radius: 9999px;
+}
+
+.tf-hero-card {
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.tf-hero-header {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding-bottom: 18px;
+}
+
+.tf-title {
+  margin: 0 0 6px;
+  font-size: 26px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.3px;
+}
+
+.tf-subtitle {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* SECTION BLOCKS */
+.tf-section-block {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tf-block-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tf-block-title {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tf-step-num {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #e6c4b4 0%, #b88673 100%);
+  color: #1a0e0c;
+  font-size: 13px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tf-block-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tf-text-btn {
+  background: transparent;
+  border: none;
+  color: #e6c4b4;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.15s ease;
+}
+
+.tf-text-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tf-btn-divider {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+/* 1. PARTICIPANTS GRID */
+.tf-participants-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.tf-participant-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(22, 11, 9, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.tf-participant-card:hover {
+  background: rgba(45, 24, 20, 0.75);
+  border-color: rgba(230, 196, 180, 0.3);
+}
+
+.tf-participant-card.selected {
+  background: rgba(60, 32, 27, 0.85);
+  border-color: rgba(230, 196, 180, 0.6);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+
+.tf-checkbox {
+  accent-color: #e6c4b4;
+  cursor: pointer;
+}
+
+.tf-participant-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(230, 196, 180, 0.3);
+}
+
+.tf-participant-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.tf-participant-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tf-participant-uname {
+  font-size: 11px;
+  color: #e6c4b4;
+}
+
+.tf-warning-text {
+  color: #fbbf24;
+  font-size: 13px;
+  font-weight: 600;
+  margin: 6px 0 0;
+}
+
+/* 2. TEAM SIZE MODES */
+.tf-modes-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.tf-mode-card {
+  background: rgba(22, 11, 9, 0.6);
+  border: 1.5px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  padding: 16px;
+  cursor: pointer;
+  transition: all 0.22s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tf-mode-card:hover {
+  background: rgba(42, 22, 18, 0.7);
+  border-color: rgba(230, 196, 180, 0.3);
+}
+
+.tf-mode-card.active {
+  background: rgba(58, 30, 25, 0.85);
+  border-color: #e6c4b4;
+  box-shadow: 0 0 16px rgba(230, 196, 180, 0.2);
+}
+
+.tf-mode-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tf-mode-icon {
+  font-size: 20px;
+}
+
+.tf-mode-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.tf-mode-desc {
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tf-mode-badge-warn {
+  font-size: 11px;
+  font-weight: 600;
+  color: #fbbf24;
+  background: rgba(245, 158, 11, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+  width: fit-content;
+  margin-top: 4px;
+}
+
+/* 3. FORMATION MECHANISM SUBNAV */
+.tf-subnav-row {
+  display: flex;
+  gap: 8px;
+  background: rgba(20, 10, 9, 0.5);
+  padding: 4px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-wrap: wrap;
+}
+
+.tf-subnav-btn {
+  flex: 1;
+  min-width: 140px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  padding: 9px 16px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tf-subnav-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tf-subnav-btn.active {
+  color: #ffffff;
+  background: rgba(230, 196, 180, 0.22);
+  border: 1px solid rgba(230, 196, 180, 0.4);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.tf-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(24, 12, 10, 0.5);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* 4. DRAFT BOARD (Captains Pick) */
+.tf-draft-board {
+  background: rgba(20, 10, 9, 0.6);
+  border: 1px solid rgba(230, 196, 180, 0.2);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.tf-draft-setup-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto;
+  gap: 14px;
+  align-items: flex-end;
+}
+
+.tf-draft-cap-pick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.tf-draft-active-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background: linear-gradient(135deg, rgba(82, 45, 25, 0.5) 0%, rgba(55, 28, 16, 0.6) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 12px;
+}
+
+.tf-turn-tag {
+  font-size: 14px;
+  color: #ffffff;
+}
+
+.tf-turn-tag strong {
+  color: #fbbf24;
+}
+
+.tf-draft-pool {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tf-pool-label {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: rgba(230, 196, 180, 0.85);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+}
+
+.tf-pool-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tf-draft-pick-btn {
+  background: rgba(45, 24, 20, 0.8);
+  border: 1px solid rgba(230, 196, 180, 0.35);
+  color: #ffffff;
+  padding: 6px 14px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tf-draft-pick-btn:hover {
+  background: rgba(230, 196, 180, 0.3);
+  border-color: #e6c4b4;
+  transform: translateY(-1px);
+}
+
+.tf-draft-complete-note {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: #4ade80;
+  margin: 0;
+}
+
+.tf-draft-log {
+  max-height: 120px;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.35);
+  border-radius: 8px;
+  padding: 10px 14px;
+}
+
+.tf-draft-log ul {
+  margin: 6px 0 0;
+  padding-left: 20px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* 5. UNASSIGNED POOL IN MANUAL MODE */
+.tf-unassigned-panel {
+  background: rgba(20, 10, 9, 0.6);
+  border: 1px dashed rgba(230, 196, 180, 0.3);
+  border-radius: 14px;
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.tf-pool-player-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(36, 19, 16, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 5px 10px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffffff;
+}
+
+.tf-pill-action {
+  background: rgba(230, 196, 180, 0.15);
+  border: 1px solid rgba(230, 196, 180, 0.3);
+  color: #e6c4b4;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tf-pill-action:hover {
+  background: rgba(230, 196, 180, 0.35);
+  color: #ffffff;
+}
+
+/* 6. TEAMS COMPARISON GRID */
+.tf-teams-comparison-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.tf-team-card {
+  background: rgba(25, 13, 11, 0.7);
+  border: 1.5px solid rgba(230, 196, 180, 0.2);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+
+.tf-team-card.tf-team-a {
+  border-top: 4px solid #f87171;
+}
+
+.tf-team-card.tf-team-b {
+  border-top: 4px solid #60a5fa;
+}
+
+.tf-team-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tf-team-name-input {
+  background: transparent;
+  border: none;
+  border-bottom: 1.5px dashed rgba(230, 196, 180, 0.4);
+  color: #ffffff;
+  font-size: 18px;
+  font-weight: 800;
+  padding: 4px 6px;
+  outline: none;
+  width: 100%;
+}
+
+.tf-team-name-input:focus {
+  border-bottom-color: #ffffff;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.tf-team-count-badge {
+  font-size: 12px;
+  font-weight: 700;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 4px 10px;
+  border-radius: 9999px;
+  white-space: nowrap;
+  color: #ffffff;
+}
+
+.tf-captain-highlight {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 10px;
+  font-size: 13.5px;
+  color: #ffffff;
+}
+
+.tf-crown-icon {
+  font-size: 16px;
+}
+
+.tf-strategy-box {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tf-strategy-textarea {
+  resize: vertical;
+  font-size: 12.5px;
+  padding: 8px 12px;
+}
+
+.tf-submit-auth-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.tf-auth-select {
+  padding: 6px 10px;
+  font-size: 12px;
+  width: auto;
+}
+
+.tf-team-members-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 220px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.tf-team-member-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: rgba(35, 18, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.tf-member-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tf-member-handle {
+  font-weight: 700;
+  font-size: 13px;
+  color: #ffffff;
+}
+
+.tf-cap-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.tf-member-row-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tf-cap-set-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #e6c4b4;
+  padding: 3px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tf-cap-set-btn:hover {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  border-color: #fbbf24;
+}
+
+.tf-remove-btn {
+  background: transparent;
+  border: none;
+  color: #ff8a80;
+  cursor: pointer;
+  font-size: 13px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.tf-remove-btn:hover {
+  background: rgba(239, 83, 80, 0.2);
+}
+
+.tf-empty-team {
+  text-align: center;
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
+  padding: 18px;
+  margin: 0;
+}
+
+/* 7. FOOTER PANEL */
+.tf-footer-panel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  flex-wrap: wrap;
+}
+
+.tf-validation-box {
+  flex: 1;
+}
+
+.tf-valid-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #4ade80;
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.tf-valid-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(34, 197, 94, 0.2);
+  border: 1px solid rgba(34, 197, 94, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+}
+
+.tf-invalid-box {
+  color: #f87171;
+  font-size: 12.5px;
+}
+
+.tf-invalid-title {
+  font-weight: 700;
+  display: block;
+  margin-bottom: 4px;
+}
+
+.tf-invalid-box ul {
+  margin: 0;
+  padding-left: 20px;
+  line-height: 1.4;
+}
+
+.tf-footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tf-launch-btn {
+  padding: 10px 24px;
+  font-size: 14.5px;
+}
+
+/* 8. STEP 5: CHALLENGE & PROBLEM CONFIGURATION */
+.tf-config-card {
+  background: rgba(25, 13, 11, 0.7);
+  border: 1.5px solid rgba(230, 196, 180, 0.2);
+  border-radius: 18px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.tf-source-tabs {
+  display: flex;
+  gap: 10px;
+}
+
+.tf-source-tab {
+  flex: 1;
+  background: rgba(45, 24, 20, 0.7);
+  border: 1px solid rgba(230, 196, 180, 0.25);
+  color: rgba(255, 255, 255, 0.8);
+  padding: 10px 16px;
+  border-radius: 12px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.tf-source-tab:hover {
+  background: rgba(230, 196, 180, 0.15);
+  color: #ffffff;
+}
+
+.tf-source-tab.active {
+  background: linear-gradient(135deg, rgba(82, 45, 25, 0.8) 0%, rgba(55, 28, 16, 0.9) 100%);
+  border-color: #e6c4b4;
+  color: #ffffff;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+}
+
+.tf-auto-select-panel,
+.tf-manual-select-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.tf-cfg-row {
+  display: grid;
+  grid-template-columns: 1fr 1.5fr;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.tf-cfg-field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tf-counter-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tf-counter-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(230, 196, 180, 0.15);
+  border: 1px solid rgba(230, 196, 180, 0.3);
+  color: #ffffff;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tf-counter-btn:hover:not(:disabled) {
+  background: rgba(230, 196, 180, 0.35);
+  border-color: #e6c4b4;
+}
+
+.tf-counter-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.tf-counter-val {
+  font-size: 18px;
+  font-weight: 800;
+  color: #ffffff;
+  min-width: 24px;
+  text-align: center;
+}
+
+.tf-recommend-chip {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 11.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tf-recommend-chip:hover {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #fbbf24;
+}
+
+.tf-diff-mix-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.tf-diff-badge-pill {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.tf-diff-badge-pill.easy {
+  background: rgba(34, 197, 94, 0.15);
+  border: 1px solid rgba(34, 197, 94, 0.35);
+  color: #4ade80;
+}
+
+.tf-diff-badge-pill.medium {
+  background: rgba(245, 158, 11, 0.15);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  color: #fbbf24;
+}
+
+.tf-diff-badge-pill.hard {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #f87171;
+}
+
+.tf-diff-num-input {
+  width: 44px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  border-radius: 6px;
+  padding: 2px 6px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+}
+
+.tf-exclude-box {
+  background: rgba(35, 18, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 12px 16px;
+}
+
+.tf-checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+  color: #ffffff;
+  font-size: 13.5px;
+}
+
+.tf-hint-text {
+  display: block;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.tf-manual-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tf-manual-count {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.tf-catalog-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 240px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.tf-catalog-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(35, 18, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tf-catalog-item:hover {
+  background: rgba(230, 196, 180, 0.12);
+  border-color: rgba(230, 196, 180, 0.3);
+}
+
+.tf-catalog-item.picked {
+  background: rgba(230, 196, 180, 0.18);
+  border-color: #e6c4b4;
+}
+
+.tf-cat-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.tf-cat-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tf-cat-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.tf-diff-tag {
+  font-size: 10.5px;
+  font-weight: 700;
+  padding: 1px 7px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.tf-diff-tag.easy {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.tf-diff-tag.medium {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.tf-diff-tag.hard {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.tf-cat-category {
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.tf-cat-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Time & Mode Grid */
+.tf-time-mode-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.tf-preset-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tf-preset-chip {
+  background: rgba(45, 24, 20, 0.7);
+  border: 1px solid rgba(230, 196, 180, 0.25);
+  color: rgba(255, 255, 255, 0.85);
+  padding: 6px 12px;
+  border-radius: 9999px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tf-preset-chip:hover {
+  background: rgba(230, 196, 180, 0.2);
+  color: #ffffff;
+}
+
+.tf-preset-chip.active {
+  background: rgba(230, 196, 180, 0.3);
+  border-color: #e6c4b4;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.tf-def-pill {
+  font-size: 9.5px;
+  font-weight: 700;
+  background: rgba(245, 158, 11, 0.3);
+  color: #fbbf24;
+  padding: 1px 5px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+}
+
+.tf-custom-time-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 6px;
+}
+
+.tf-custom-time-input {
+  width: 90px;
+  padding: 6px 10px;
+  font-size: 13px;
+}
+
+.tf-mode-toggle-row {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.tf-mode-toggle-card {
+  background: rgba(35, 18, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 12px 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+}
+
+.tf-mode-toggle-card:hover {
+  background: rgba(230, 196, 180, 0.1);
+  border-color: rgba(230, 196, 180, 0.3);
+}
+
+.tf-mode-toggle-card.active {
+  background: rgba(230, 196, 180, 0.2);
+  border-color: #e6c4b4;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.25);
+}
+
+.tf-mode-toggle-hdr {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.tf-mode-toggle-desc {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tf-assigned-preview-box {
+  background: rgba(18, 9, 8, 0.7);
+  border: 1px dashed rgba(230, 196, 180, 0.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.tf-assigned-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.tf-assigned-team-col {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.tf-assigned-player-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tf-assigned-player-row em {
+  font-style: normal;
+  color: rgba(230, 196, 180, 0.85);
+  font-size: 11px;
+}
+
+/* Scoring & Fairness Rules */
+.tf-scoring-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tf-scoring-chips {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.tf-score-chip {
+  font-size: 11.5px;
+  font-weight: 700;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+
+.tf-score-chip.easy {
+  background: rgba(34, 197, 94, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(34, 197, 94, 0.4);
+}
+
+.tf-score-chip.medium {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.tf-score-chip.hard {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.tf-scoring-toggles-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  padding: 12px 14px;
+  background: rgba(35, 18, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.tf-fairness-box {
+  background: rgba(35, 18, 15, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 14px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: all 0.2s ease;
+}
+
+.tf-fairness-box.auto-active {
+  border-color: rgba(245, 158, 11, 0.45);
+  background: linear-gradient(135deg, rgba(45, 24, 20, 0.8) 0%, rgba(65, 35, 18, 0.8) 100%);
+  box-shadow: 0 4px 18px rgba(245, 158, 11, 0.15);
+}
+
+.tf-fairness-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 10px;
+  font-size: 12.5px;
+  color: #ffffff;
+  line-height: 1.4;
+}
+
+.tf-fairness-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+@media (max-width: 860px) {
+  .tf-cfg-row,
+  .tf-time-mode-grid,
+  .tf-scoring-toggles-grid,
+  .tf-assigned-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 860px) {
+  .tf-modes-grid,
+  .tf-teams-comparison-grid {
+    grid-template-columns: 1fr;
+  }
+  .tf-draft-setup-row {
+    grid-template-columns: 1fr;
+  }
+}

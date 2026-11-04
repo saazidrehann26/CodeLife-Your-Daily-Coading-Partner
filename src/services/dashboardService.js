@@ -168,6 +168,42 @@ export const CURATED_PROBLEMS = [
       C: 'int climbStairs(int n) {\n    if (n <= 2) return n;\n    int a = 1, b = 2;\n    for(int i = 3; i <= n; i++) {\n        int c = a + b; a = b; b = c;\n    }\n    return b;\n}',
     },
   },
+  {
+    id: 9,
+    title: 'Trapping Rain Water',
+    difficulty: 'Hard',
+    category: 'Two Pointers',
+    tags: ['Array', 'Two Pointers', 'Dynamic Programming', 'Stack'],
+    description:
+      'Given n non-negative integers representing an elevation map where the width of each bar is 1, compute how much water it can trap after raining.',
+    examples: [
+      { input: 'height = [0,1,0,2,1,0,1,3,2,1,2,1]', output: '6' },
+      { input: 'height = [4,2,0,3,2,5]', output: '9' },
+    ],
+    starterSnippet: {
+      Python: 'def trap(height: list[int]) -> int:\n    if not height: return 0\n    l, r = 0, len(height) - 1\n    l_max, r_max = height[l], height[r]\n    res = 0\n    while l < r:\n        if l_max < r_max:\n            l += 1\n            l_max = max(l_max, height[l])\n            res += l_max - height[l]\n        else:\n            r -= 1\n            r_max = max(r_max, height[r])\n            res += r_max - height[r]\n    return res',
+      'C++': 'int trap(vector<int>& height) {\n    int l = 0, r = height.size() - 1, l_max = 0, r_max = 0, res = 0;\n    while (l < r) {\n        if (height[l] < height[r]) {\n            if (height[l] >= l_max) l_max = height[l];\n            else res += l_max - height[l];\n            l++;\n        } else {\n            if (height[r] >= r_max) r_max = height[r];\n            else res += r_max - height[r];\n            r--;\n        }\n    }\n    return res;\n}',
+      C: 'int trap(int* height, int heightSize) {\n    int l = 0, r = heightSize - 1, l_max = 0, r_max = 0, res = 0;\n    while (l < r) {\n        if (height[l] < height[r]) {\n            if (height[l] >= l_max) l_max = height[l];\n            else res += l_max - height[l];\n            l++;\n        } else {\n            if (height[r] >= r_max) r_max = height[r];\n            else res += r_max - height[r];\n            r--;\n        }\n    }\n    return res;\n}',
+    },
+  },
+  {
+    id: 10,
+    title: 'Median of Two Sorted Arrays',
+    difficulty: 'Hard',
+    category: 'Binary Search',
+    tags: ['Array', 'Binary Search', 'Divide and Conquer'],
+    description:
+      'Given two sorted arrays nums1 and nums2 of size m and n respectively, return the median of the two sorted arrays. The overall run time complexity should be O(log (m+n)).',
+    examples: [
+      { input: 'nums1 = [1,3], nums2 = [2]', output: '2.00000' },
+      { input: 'nums1 = [1,2], nums2 = [3,4]', output: '2.50000' },
+    ],
+    starterSnippet: {
+      Python: 'def findMedianSortedArrays(nums1: list[int], nums2: list[int]) -> float:\n    A, B = nums1, nums2\n    if len(B) < len(A): A, B = B, A\n    total = len(A) + len(B)\n    half = total // 2\n    l, r = 0, len(A) - 1\n    while True:\n        i = (l + r) // 2\n        j = half - i - 2\n        A_left = A[i] if i >= 0 else float("-inf")\n        A_right = A[i + 1] if (i + 1) < len(A) else float("inf")\n        B_left = B[j] if j >= 0 else float("-inf")\n        B_right = B[j + 1] if (j + 1) < len(B) else float("inf")\n        if A_left <= B_right and B_left <= A_right:\n            if total % 2:\n                return min(A_right, B_right)\n            return (max(A_left, B_left) + min(A_right, B_right)) / 2\n        elif A_left > B_right:\n            r = i - 1\n        else:\n            l = i + 1',
+      'C++': 'double findMedianSortedArrays(vector<int>& nums1, vector<int>& nums2) {\n    if (nums1.size() > nums2.size()) return findMedianSortedArrays(nums2, nums1);\n    int m = nums1.size(), n = nums2.size(), total = m + n, half = total / 2;\n    int l = 0, r = m;\n    while (l <= r) {\n        int i = l + (r - l) / 2, j = half - i;\n        int A_left = (i == 0) ? INT_MIN : nums1[i - 1];\n        int A_right = (i == m) ? INT_MAX : nums1[i];\n        int B_left = (j == 0) ? INT_MIN : nums2[j - 1];\n        int B_right = (j == n) ? INT_MAX : nums2[j];\n        if (A_left <= B_right && B_left <= A_right) {\n            if (total % 2) return min(A_right, B_right);\n            return (max(A_left, B_left) + min(A_right, B_right)) / 2.0;\n        } else if (A_left > B_right) r = i - 1;\n        else l = i + 1;\n    }\n    return 0.0;\n}',
+      C: 'double findMedianSortedArrays(int* nums1, int nums1Size, int* nums2, int nums2Size) {\n    // Merge and compute median\n    int total = nums1Size + nums2Size;\n    int* merged = (int*)malloc(total * sizeof(int));\n    int i = 0, j = 0, k = 0;\n    while (i < nums1Size && j < nums2Size) {\n        if (nums1[i] < nums2[j]) merged[k++] = nums1[i++];\n        else merged[k++] = nums2[j++];\n    }\n    while (i < nums1Size) merged[k++] = nums1[i++];\n    while (j < nums2Size) merged[k++] = nums2[j++];\n    double ans = (total % 2) ? merged[total / 2] : (merged[total / 2 - 1] + merged[total / 2]) / 2.0;\n    free(merged);\n    return ans;\n}',
+    },
+  },
 ];
 
 /**
