@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   getUserCircles,
   getPendingCircleInvites,
   respondCircleInvite,
   createCircle,
-  joinCircleByCode,
+  joinCircleByCodeAsync,
+  syncCirclesAndInvitesAsync,
+  sendCircleInvite,
   searchUsers,
   getCircleMatchHistory,
 } from '../services/groupChallengeService';
@@ -35,6 +37,7 @@ export default function GroupChallengePage({
   // Modals
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCircleName, setNewCircleName] = useState('');
+  const [inviteFriendsInput, setInviteFriendsInput] = useState('');
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinInviteCode, setJoinInviteCode] = useState('');
   const [joinModalError, setJoinModalError] = useState(null);
@@ -51,12 +54,6 @@ export default function GroupChallengePage({
 
   // Selected member profile modal
   const [viewingProfileUsername, setViewingProfileUsername] = useState(null);
-
-  // Notification dot: has pending invites or live matches
-  const hasNotifications = useMemo(() => {
-    if (pendingInvites.length > 0) return true;
-    return circles.some((c) => c.status === 'Match live');
-  }, [pendingInvites, circles]);
 
   // URL query or hash detection on initial mount (e.g. #group-challenge?join=CODE or #group-challenge/circle/:id)
   useEffect(() => {
@@ -78,16 +75,27 @@ export default function GroupChallengePage({
     }
   }, []);
 
-  // Load updated circle data when user changes
+  const reloadData = useCallback(async () => {
+    if (!currentUser?.username) return;
+    await syncCirclesAndInvitesAsync(currentUser.username);
+    setCircles(getUserCircles(currentUser.username));
+    setPendingInvites(getPendingCircleInvites(currentUser.username));
+    setMatchHistory(getCircleMatchHistory());
+  }, [currentUser]);
+
+  // Load updated circle data and sync from server on mount and window focus
   useEffect(() => {
-    if (currentUser?.username) {
-      Promise.resolve().then(() => {
-        setCircles(getUserCircles(currentUser.username));
-        setPendingInvites(getPendingCircleInvites(currentUser.username));
-        setMatchHistory(getCircleMatchHistory());
-      });
-    }
-  }, [currentUser?.username]);
+    const timer = setTimeout(() => {
+      reloadData();
+    }, 0);
+    window.addEventListener('focus', reloadData);
+    const interval = setInterval(reloadData, 4000);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', reloadData);
+      clearInterval(interval);
+    };
+  }, [reloadData]);
 
   // Debounced search effect (~300ms, min 2 chars)
   useEffect(() => {
@@ -151,28 +159,39 @@ export default function GroupChallengePage({
     setCircles(getUserCircles(currentUser.username));
   };
 
-  // Create circle handler
+  // Create circle handler with optional friend invitations
   const handleCreateCircleSubmit = (e) => {
     e.preventDefault();
     if (!newCircleName.trim() || !currentUser?.username) return;
     const created = createCircle(currentUser.username, newCircleName.trim());
     if (created) {
+      if (inviteFriendsInput.trim()) {
+        const friendList = inviteFriendsInput
+          .split(/[,;\s]+/)
+          .map((f) => f.replace(/^@/, '').trim())
+          .filter(Boolean);
+        for (const friend of friendList) {
+          sendCircleInvite(currentUser.username, friend, created.id, created.name);
+        }
+      }
       setCircles(getUserCircles(currentUser.username));
       setNewCircleName('');
+      setInviteFriendsInput('');
       setShowCreateModal(false);
       setSelectedCircleId(created.id);
     }
   };
 
-  // Join circle by code handler
-  const handleJoinByCodeSubmit = (e) => {
+  // Join circle by code handler (checks local & backend server)
+  const handleJoinByCodeSubmit = async (e) => {
     e.preventDefault();
-    const cleanCode = joinInviteCode.trim().toUpperCase();
+    const cleanCode = joinInviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     if (!cleanCode || !currentUser?.username) return;
 
-    const res = joinCircleByCode(currentUser.username, cleanCode);
+    const res = await joinCircleByCodeAsync(currentUser.username, cleanCode);
     if (res.success && res.circle) {
       setCircles(getUserCircles(currentUser.username));
+      setPendingInvites(getPendingCircleInvites(currentUser.username));
       setShowJoinModal(false);
       setJoinInviteCode('');
       setJoinModalError(null);
@@ -190,8 +209,9 @@ export default function GroupChallengePage({
       <header className="gc-navbar">
         <div
           className="gc-brand-wrap"
-          onClick={() => (onNavigate ? onNavigate('landing') : null)}
-          title="Return to Home / Intro Page"
+          onClick={() => (onNavigate ? onNavigate('dashboard') : null)}
+          title="Return to Dashboard"
+          style={{ cursor: 'pointer' }}
         >
           <div className="gc-brand-logo-frame">
             <img
@@ -206,70 +226,6 @@ export default function GroupChallengePage({
           </div>
           <span className="gc-brand-title">CodeLife</span>
         </div>
-
-        <nav className="gc-nav-links" aria-label="Group Challenge Navigation">
-          <button
-            type="button"
-            className="gc-nav-btn"
-            onClick={() => (onNavigate ? onNavigate('dashboard') : null)}
-            title="Go to Personal Practice Dashboard"
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-            </svg>
-            <span>Dashboard</span>
-          </button>
-
-          {/* Group Challenge Button (Active State Highlight) */}
-          <button
-            type="button"
-            className="gc-nav-btn active"
-            title="Group Challenge is currently active"
-          >
-            {hasNotifications && <span className="gc-nav-badge-dot" />}
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-            <span>Group Challenge</span>
-          </button>
-
-          {currentUser ? (
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-              <button
-                type="button"
-                className="gc-nav-btn"
-                onClick={() => setViewingProfileUsername(currentUser.username)}
-                title="View your public profile & settings"
-              >
-                <span>@{currentUser.username}</span>
-              </button>
-              {onSignOut && (
-                <button
-                  type="button"
-                  className="gc-nav-btn"
-                  onClick={onSignOut}
-                  title="Sign out of current account"
-                >
-                  Sign Out
-                </button>
-              )}
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="gc-nav-btn"
-              onClick={() => (onNavigate ? onNavigate('signin') : null)}
-            >
-              Sign In
-            </button>
-          )}
-        </nav>
       </header>
 
       {/* =====================================================================
@@ -339,6 +295,43 @@ export default function GroupChallengePage({
           </div>
         </section>
 
+        {/* Real-time Incoming Invite Notification Alert */}
+        {pendingInvites.length > 0 && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(74, 38, 28, 0.95), rgba(48, 24, 18, 0.95))',
+              border: '1px solid rgba(230, 196, 180, 0.4)',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '18px',
+              gap: '12px',
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.4)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontSize: '20px' }}>🔔</span>
+              <div>
+                <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>
+                  @{pendingInvites[0].inviterUsername} invited you in {pendingInvites[0].circleName}
+                </span>
+                <span style={{ display: 'block', fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)' }}>
+                  Accept to join the circle and participate in team challenges together!
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              className="spherical-btn spherical-btn-primary spherical-btn-sm"
+              onClick={() => handleRespondInvite(pendingInvites[0].id, true)}
+            >
+              Accept Invite →
+            </button>
+          </div>
+        )}
+
         {/* Pending Invites Banner */}
         {pendingInvites.length > 0 && (
           <section className="gc-glass-card gc-invites-banner">
@@ -354,8 +347,12 @@ export default function GroupChallengePage({
               {pendingInvites.map((inv) => (
                 <div key={inv.id} className="gc-invite-item-card">
                   <div className="gc-invite-meta">
-                    <span className="gc-invite-circle-name">{inv.circleName}</span>
-                    <span className="gc-invite-inviter">Invited by @{inv.inviterUsername}</span>
+                    <span className="gc-invite-circle-name" style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff' }}>
+                      @{inv.inviterUsername} invited you in {inv.circleName}
+                    </span>
+                    <span className="gc-invite-inviter" style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '2px' }}>
+                      Circle Invitation • {new Date(inv.createdAt).toLocaleDateString()}
+                    </span>
                   </div>
 
                   <div className="gc-invite-actions">
@@ -621,6 +618,20 @@ export default function GroupChallengePage({
                 />
               </div>
 
+              <div className="modal-form-group">
+                <label className="modal-label">Invite Friends (Optional)</label>
+                <input
+                  type="text"
+                  className="modal-input"
+                  placeholder="e.g. friend1, friend2"
+                  value={inviteFriendsInput}
+                  onChange={(e) => setInviteFriendsInput(e.target.value)}
+                />
+                <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '4px', display: 'block' }}>
+                  Friends will receive a notification: &quot;@{currentUser?.username} invited you in {newCircleName.trim() || 'this circle'}&quot;.
+                </span>
+              </div>
+
               <div className="modal-actions-row">
                 <button
                   type="button"
@@ -666,7 +677,7 @@ export default function GroupChallengePage({
                   placeholder="e.g. A9B2X7"
                   value={joinInviteCode}
                   onChange={(e) => {
-                    setJoinInviteCode(e.target.value);
+                    setJoinInviteCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase());
                     setJoinModalError(null);
                   }}
                   maxLength={10}

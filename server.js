@@ -463,6 +463,183 @@ app.get('/api/users/:username/public-profile', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Group Challenge Circles & Invitations API (Stage 2 Central Store)
+// ---------------------------------------------------------------------------
+const CIRCLES_FILE = path.join(__dirname, 'circles_db.json');
+const INVITES_FILE = path.join(__dirname, 'invites_db.json');
+
+function loadCirclesFromFile() {
+  try {
+    if (fs.existsSync(CIRCLES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(CIRCLES_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (err) {
+    console.error('[Server] Error reading circles DB file:', err);
+  }
+  return [];
+}
+
+function saveCirclesToFile(circles) {
+  try {
+    fs.writeFileSync(CIRCLES_FILE, JSON.stringify(circles, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[Server] Error saving circles DB file:', err);
+  }
+}
+
+function loadInvitesFromFile() {
+  try {
+    if (fs.existsSync(INVITES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(INVITES_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (err) {
+    console.error('[Server] Error reading invites DB file:', err);
+  }
+  return [];
+}
+
+function saveInvitesToFile(invites) {
+  try {
+    fs.writeFileSync(INVITES_FILE, JSON.stringify(invites, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[Server] Error saving invites DB file:', err);
+  }
+}
+
+app.get('/api/circles', (req, res) => {
+  const circles = loadCirclesFromFile();
+  return res.json({ success: true, circles });
+});
+
+app.post('/api/circles', (req, res) => {
+  const circle = req.body;
+  if (!circle || !circle.id || !circle.name) {
+    return res.status(400).json({ error: 'Valid circle object required' });
+  }
+  const circles = loadCirclesFromFile();
+  const idx = circles.findIndex((c) => c.id === circle.id);
+  if (idx !== -1) {
+    circles[idx] = { ...circles[idx], ...circle };
+  } else {
+    circles.unshift(circle);
+  }
+  saveCirclesToFile(circles);
+  return res.json({ success: true, circle: circles[idx !== -1 ? idx : 0] });
+});
+
+app.post('/api/circles/join', (req, res) => {
+  const { username, inviteCode } = req.body || {};
+  if (!username || !inviteCode) {
+    return res.status(400).json({ success: false, error: 'Username and invite code are required.' });
+  }
+  const cleanUser = username.trim().toLowerCase();
+  const cleanCode = inviteCode.trim().toUpperCase();
+
+  const circles = loadCirclesFromFile();
+  const circleIndex = circles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+
+  if (circleIndex === -1) {
+    return res.status(404).json({ success: false, error: 'Circle not found. Please verify the 6-character invite code.' });
+  }
+
+  const circle = circles[circleIndex];
+  const members = circle.members || [];
+
+  if (members.some((m) => (m.username || '').toLowerCase() === cleanUser)) {
+    return res.json({ success: true, circle, message: 'Already a member' });
+  }
+
+  const max = circle.maxMembers || 50;
+  if (members.length >= max) {
+    return res.status(400).json({ success: false, error: `This circle is full (max ${max} members reached).` });
+  }
+
+  const updatedCircle = {
+    ...circle,
+    members: [
+      ...members,
+      {
+        username: cleanUser,
+        role: 'member',
+        joinedAt: new Date().toISOString(),
+      },
+    ],
+  };
+
+  circles[circleIndex] = updatedCircle;
+  saveCirclesToFile(circles);
+
+  // Clear pending invite for this user
+  const invites = loadInvitesFromFile().filter(
+    (inv) => !((inv.targetUsername || '').toLowerCase() === cleanUser && inv.circleId === circle.id)
+  );
+  saveInvitesToFile(invites);
+
+  return res.json({ success: true, circle: updatedCircle });
+});
+
+app.get('/api/invites/:username', (req, res) => {
+  const clean = (req.params.username || '').trim().toLowerCase();
+  const allInvites = loadInvitesFromFile();
+  const userInvites = allInvites.filter(
+    (inv) => (inv.targetUsername || '').toLowerCase() === clean && inv.status === 'pending'
+  );
+  return res.json({ success: true, invites: userInvites });
+});
+
+app.post('/api/invites', (req, res) => {
+  const invite = req.body;
+  if (!invite || !invite.circleId || !invite.targetUsername) {
+    return res.status(400).json({ error: 'Valid invite payload required' });
+  }
+  const allInvites = loadInvitesFromFile();
+  const existingIdx = allInvites.findIndex(
+    (i) => i.id === invite.id || (i.circleId === invite.circleId && (i.targetUsername || '').toLowerCase() === (invite.targetUsername || '').toLowerCase())
+  );
+  if (existingIdx !== -1) {
+    allInvites[existingIdx] = invite;
+  } else {
+    allInvites.unshift(invite);
+  }
+  saveInvitesToFile(allInvites);
+  return res.json({ success: true, invite });
+});
+
+app.post('/api/invites/respond', (req, res) => {
+  const { username, inviteId, accept } = req.body || {};
+  if (!username || !inviteId) {
+    return res.status(400).json({ error: 'Username and inviteId are required' });
+  }
+  const cleanUser = username.trim().toLowerCase();
+  const allInvites = loadInvitesFromFile();
+  const invite = allInvites.find((i) => i.id === inviteId);
+  const remaining = allInvites.filter((i) => i.id !== inviteId);
+  saveInvitesToFile(remaining);
+
+  if (accept && invite) {
+    const circles = loadCirclesFromFile();
+    const cIdx = circles.findIndex((c) => c.id === invite.circleId);
+    if (cIdx !== -1) {
+      const circle = circles[cIdx];
+      const members = circle.members || [];
+      if (!members.some((m) => (m.username || '').toLowerCase() === cleanUser)) {
+        circles[cIdx] = {
+          ...circle,
+          members: [...members, { username: cleanUser, role: 'member', joinedAt: new Date().toISOString() }],
+        };
+        saveCirclesToFile(circles);
+        return res.json({ success: true, circle: circles[cIdx] });
+      }
+      return res.json({ success: true, circle });
+    }
+  }
+
+  return res.json({ success: true });
+});
+
 /**
  * Backend route for Judge0 API
  * Keeps API keys completely private on the server.

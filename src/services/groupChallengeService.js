@@ -358,11 +358,15 @@ export function createCircle(creatorUsername, circleName, maxMembers = DEFAULT_M
   const clean = creatorUsername.trim().toLowerCase();
   const all = getAllCircles();
 
-  // Generate unique 6-char alphanumeric invite code
-  let inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-  while (all.some((c) => (c.inviteCode || '').toUpperCase() === inviteCode)) {
-    inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-  }
+  // Generate robust unique 6-char alphanumeric invite code
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let inviteCode = '';
+  do {
+    inviteCode = '';
+    for (let i = 0; i < 6; i++) {
+      inviteCode += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+  } while (all.some((c) => (c.inviteCode || '').toUpperCase() === inviteCode));
 
   const newCircle = {
     id: `circle_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -384,6 +388,15 @@ export function createCircle(creatorUsername, circleName, maxMembers = DEFAULT_M
   const updatedAll = [newCircle, ...all];
   saveAllCircles(updatedAll);
   saveUserCircles(clean, getUserCircles(clean));
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    fetch('/api/circles', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newCircle),
+    }).catch(() => {});
+  }
+
   return newCircle;
 }
 
@@ -424,7 +437,7 @@ export function joinCircleByCode(username, inviteCode) {
     return { success: false, error: 'Username and invite code are required.' };
   }
   const cleanUser = username.trim().toLowerCase();
-  const cleanCode = inviteCode.trim().toUpperCase();
+  const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
   const all = getAllCircles();
   const circleIndex = all.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
@@ -470,7 +483,101 @@ export function joinCircleByCode(username, inviteCode) {
   const remainingInvites = userInvites.filter((inv) => inv.circleId !== circle.id);
   savePendingCircleInvites(cleanUser, remainingInvites);
 
+  // Notify backend server asynchronously if online
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    fetch('/api/circles/join', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: cleanUser, inviteCode: cleanCode }),
+    }).catch(() => {});
+  }
+
   return { success: true, circle: updatedCircle };
+}
+
+/**
+ * Join circle asynchronously checking local cache and backend server
+ */
+export async function joinCircleByCodeAsync(username, inviteCode) {
+  if (!username || !inviteCode) {
+    return { success: false, error: 'Username and invite code are required.' };
+  }
+  const cleanUser = username.trim().toLowerCase();
+  const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+
+  const localRes = joinCircleByCode(cleanUser, cleanCode);
+  if (localRes.success) return localRes;
+
+  // If not found locally, query remote server
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    try {
+      const res = await fetch('/api/circles/join', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, inviteCode: cleanCode }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.circle) {
+          const all = getAllCircles();
+          const idx = all.findIndex((c) => c.id === data.circle.id);
+          if (idx !== -1) all[idx] = data.circle;
+          else all.unshift(data.circle);
+          saveAllCircles(all);
+          saveUserCircles(cleanUser, getUserCircles(cleanUser));
+
+          const userInvites = getPendingCircleInvites(cleanUser);
+          const remainingInvites = userInvites.filter((inv) => inv.circleId !== data.circle.id);
+          savePendingCircleInvites(cleanUser, remainingInvites);
+
+          return { success: true, circle: data.circle };
+        } else if (data.error) {
+          return { success: false, error: data.error };
+        }
+      }
+    } catch {
+      // Fall through to local error
+    }
+  }
+
+  return localRes;
+}
+
+/**
+ * Sync all circles and invites from backend server
+ */
+export async function syncCirclesAndInvitesAsync(username) {
+  if (typeof window === 'undefined' || !window.navigator?.onLine) return;
+  try {
+    const circlesRes = await fetch('/api/circles');
+    if (circlesRes.ok) {
+      const data = await circlesRes.json();
+      if (Array.isArray(data.circles) && data.circles.length > 0) {
+        const local = getAllCircles();
+        const map = new Map();
+        for (const c of local) map.set(c.id, c);
+        for (const c of data.circles) map.set(c.id, c);
+        saveAllCircles(Array.from(map.values()));
+      }
+    }
+
+    if (username) {
+      const clean = username.trim().toLowerCase();
+      const invitesRes = await fetch(`/api/invites/${clean}`);
+      if (invitesRes.ok) {
+        const data = await invitesRes.json();
+        if (Array.isArray(data.invites)) {
+          const localInvites = getPendingCircleInvites(clean);
+          const map = new Map();
+          for (const inv of localInvites) map.set(inv.id, inv);
+          for (const inv of data.invites) map.set(inv.id, inv);
+          savePendingCircleInvites(clean, Array.from(map.values()));
+        }
+      }
+    }
+  } catch {
+    // Network sync fallback
+  }
 }
 
 /**
@@ -644,17 +751,29 @@ export function sendCircleInvite(inviterUsername, targetUsername, circleId, circ
     return { success: false, error: 'An invitation is already pending for this user.' };
   }
 
+  const cleanInviter = inviterUsername.trim();
+  const cName = circleName || circle?.name || 'Friend Circle';
   const newInvite = {
     id: `inv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
     circleId,
-    circleName: circleName || circle?.name || 'Friend Circle',
-    inviterUsername: inviterUsername.trim().toLowerCase(),
+    circleName: cName,
+    inviterUsername: cleanInviter.toLowerCase(),
     targetUsername: targetClean,
+    notificationText: `${cleanInviter} invited you in ${cName}`,
     createdAt: new Date().toISOString(),
     status: 'pending',
   };
 
   savePendingCircleInvites(targetClean, [newInvite, ...existingInvites]);
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    fetch('/api/invites', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newInvite),
+    }).catch(() => {});
+  }
+
   return { success: true, invite: newInvite };
 }
 
@@ -795,6 +914,14 @@ export function respondCircleInvite(username, inviteId, accept = true) {
       };
       saveUserCircles(cleanUser, [joined, ...userCircles]);
     }
+  }
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    fetch('/api/invites/respond', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username: cleanUser, inviteId, accept }),
+    }).catch(() => {});
   }
 
   return true;

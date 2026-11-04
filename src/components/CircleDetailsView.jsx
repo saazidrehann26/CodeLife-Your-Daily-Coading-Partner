@@ -5,7 +5,6 @@ import {
   leaveCircle,
   deleteCircle,
   sendCircleInvite,
-  inviteByEmail,
   getCirclePendingInvites,
   revokeCircleInvite,
   updateCircleName,
@@ -51,10 +50,6 @@ export default function CircleDetailsView({
   const [searchOffset, setSearchOffset] = useState(0);
   const [searchError, setSearchError] = useState(null);
   const debounceRef = useRef(null);
-
-  // Email invite state
-  const [emailInput, setEmailInput] = useState('');
-  const [emailStatus, setEmailStatus] = useState(null);
 
   // Profile modal
   const [viewingProfileUsername, setViewingProfileUsername] = useState(null);
@@ -159,19 +154,6 @@ export default function CircleDetailsView({
       reloadCircle();
     } else {
       alert(res.error || 'Failed to send invite.');
-    }
-  };
-
-  const handleSendEmailInvite = (e) => {
-    e.preventDefault();
-    if (!emailInput.trim() || !currentUser || !circle) return;
-    const res = inviteByEmail(currentUser.username, circle.id, emailInput.trim());
-    if (res.success) {
-      setEmailStatus({ type: 'success', message: res.message || `Invitation successfully sent to ${emailInput}!` });
-      setEmailInput('');
-      reloadCircle();
-    } else {
-      setEmailStatus({ type: 'error', message: res.error || 'Failed to send email invite.' });
     }
   };
 
@@ -416,7 +398,6 @@ export default function CircleDetailsView({
               className="spherical-btn"
               onClick={() => {
                 setShowInviteModal(true);
-                setEmailStatus(null);
               }}
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -610,13 +591,6 @@ export default function CircleDetailsView({
               </button>
               <button
                 type="button"
-                className={`cd-tab-btn ${inviteModalTab === 'email' ? 'active' : ''}`}
-                onClick={() => setInviteModalTab('email')}
-              >
-                Invite by Email
-              </button>
-              <button
-                type="button"
                 className={`cd-tab-btn ${inviteModalTab === 'share' ? 'active' : ''}`}
                 onClick={() => setInviteModalTab('share')}
               >
@@ -713,40 +687,7 @@ export default function CircleDetailsView({
             )}
 
             {/* Tab 2: Email Invite */}
-            {inviteModalTab === 'email' && (
-              <form className="cd-tab-content" onSubmit={handleSendEmailInvite}>
-                <p className="cd-tab-desc">
-                  Send a team challenge invitation directly to your friend&apos;s email address.
-                </p>
-
-                <div className="cd-form-group">
-                  <label htmlFor="friend-email-input" className="cd-label">Friend&apos;s Email Address</label>
-                  <input
-                    id="friend-email-input"
-                    type="email"
-                    className="cd-input"
-                    placeholder="friend@example.com"
-                    value={emailInput}
-                    onChange={(e) => setEmailInput(e.target.value)}
-                    required
-                  />
-                </div>
-
-                {emailStatus && (
-                  <p className={`cd-status-msg ${emailStatus.type}`}>
-                    {emailStatus.message}
-                  </p>
-                )}
-
-                <div className="cd-modal-footer">
-                  <button type="submit" className="spherical-btn spherical-btn-primary">
-                    Send Email Invite
-                  </button>
-                </div>
-              </form>
-            )}
-
-            {/* Tab 3: Share Code & Link */}
+            {/* Tab 2: Share Code & Link */}
             {inviteModalTab === 'share' && (
               <div className="cd-tab-content">
                 <p className="cd-tab-desc">

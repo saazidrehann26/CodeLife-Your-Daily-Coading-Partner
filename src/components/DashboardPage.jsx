@@ -14,7 +14,12 @@ import {
   getActiveUser,
   getFileExtension,
 } from '../services/dashboardService';
-import { hasGroupChallengeNotification } from '../services/groupChallengeService';
+import {
+  hasGroupChallengeNotification,
+  syncCirclesAndInvitesAsync,
+  getPendingCircleInvites,
+} from '../services/groupChallengeService';
+import { deleteUser } from '../services/dbService';
 import './DashboardPage.css';
 import OnlineCompiler from './OnlineCompiler';
 
@@ -82,10 +87,30 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
   const [streakTrigger, setStreakTrigger] = useState(0);
   const [codeStoreTrigger, setCodeStoreTrigger] = useState(0);
 
-  // Group Challenge notification badge dot
+  // Group Challenge notification badge dot & invites
+  const [pendingGroupInvites, setPendingGroupInvites] = useState(() =>
+    profile.username ? getPendingCircleInvites(profile.username) : []
+  );
+
   const hasGroupNotifications = useMemo(() => {
-    return hasGroupChallengeNotification(profile.username || activeUserSession.username);
-  }, [profile.username, activeUserSession.username]);
+    return pendingGroupInvites.length > 0 || hasGroupChallengeNotification(profile.username || activeUserSession?.username);
+  }, [pendingGroupInvites, profile.username, activeUserSession?.username]);
+
+  useEffect(() => {
+    const checkInvites = async () => {
+      const uname = profile.username || activeUserSession?.username;
+      if (!uname) return;
+      await syncCirclesAndInvitesAsync(uname);
+      setPendingGroupInvites(getPendingCircleInvites(uname));
+    };
+    checkInvites();
+    window.addEventListener('focus', checkInvites);
+    const interval = setInterval(checkInvites, 4000);
+    return () => {
+      window.removeEventListener('focus', checkInvites);
+      clearInterval(interval);
+    };
+  }, [profile.username, activeUserSession?.username]);
 
   const streakData = useMemo(() => {
     return getUserStreakData(profile.username, streakTrigger);
@@ -229,6 +254,20 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
     setEditInstitution(profile.institution || profile.classGrade || '');
     setEditBio(profile.bio || '');
     openModal('personal_details');
+  };
+
+  // Permanently delete user account from database and immediately sign out
+  const handleDeleteAccount = () => {
+    const identifier = activeUserSession?.username || activeUserSession?.email;
+    if (identifier) {
+      deleteUser(identifier);
+    }
+    closeModal();
+    if (onSignOut) {
+      onSignOut();
+    } else if (onNavigate) {
+      onNavigate('signin');
+    }
   };
 
   // Audio-Spectrum Bar Graph Data (Last 30 Days)
@@ -623,6 +662,47 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
             <div className="dash-glass-card welcome-banner">
               <h1 className="welcome-title">Welcome, {secondName}</h1>
             </div>
+
+            {/* Group Challenge Circle Invite Notification */}
+            {pendingGroupInvites.length > 0 && (
+              <div
+                className="dash-glass-card"
+                style={{
+                  background: 'linear-gradient(135deg, rgba(74, 38, 28, 0.95), rgba(48, 24, 18, 0.95))',
+                  border: '1px solid rgba(230, 196, 180, 0.5)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  padding: '14px 18px',
+                  marginBottom: '16px',
+                  boxShadow: '0 4px 16px rgba(0, 0, 0, 0.35)',
+                }}
+                onClick={() => onNavigate && onNavigate('group-challenge')}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{ fontSize: '22px' }}>🔔</span>
+                  <div>
+                    <span style={{ fontSize: '15px', fontWeight: 700, color: '#ffffff' }}>
+                      @{pendingGroupInvites[0].inviterUsername} invited you in {pendingGroupInvites[0].circleName}
+                    </span>
+                    <span style={{ display: 'block', fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)', marginTop: '2px' }}>
+                      Click to review your circle invitation and join team challenges!
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="spherical-btn spherical-btn-primary spherical-btn-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (onNavigate) onNavigate('group-challenge');
+                  }}
+                >
+                  View Invite →
+                </button>
+              </div>
+            )}
 
             {/* Recent Problems Section (Latest 2 problems added in Code Store) */}
             <div className="dash-glass-card">
@@ -1298,6 +1378,42 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                   </div>
                   <button type="button" className="spherical-btn spherical-btn-sm">
                     Edit →
+                  </button>
+                </div>
+              </div>
+
+              {/* Option 3: Delete Account */}
+              <div
+                className="recent-problem-card"
+                style={{
+                  cursor: 'pointer',
+                  border: '1px solid rgba(239, 83, 80, 0.35)',
+                }}
+                onClick={handleDeleteAccount}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <div>
+                    <h3 className="problem-title" style={{ fontSize: '17px', color: '#ff6b6b' }}>
+                      Delete Account
+                    </h3>
+                    <p style={{ margin: 0, fontSize: '13px', color: '#ffffff' }}>
+                      Permanently delete your account and all practice data from the database.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    className="spherical-btn spherical-btn-sm"
+                    style={{
+                      background: 'linear-gradient(135deg, rgba(211, 47, 47, 0.85), rgba(183, 28, 28, 0.85))',
+                      borderColor: 'rgba(239, 83, 80, 0.6)',
+                      color: '#ffffff',
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDeleteAccount();
+                    }}
+                  >
+                    Delete Account
                   </button>
                 </div>
               </div>

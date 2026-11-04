@@ -90,8 +90,9 @@ describe('Stage 2: Circle Management & Member Administration', () => {
     test('Allows joining via valid invite code and prevents duplicates', () => {
       const circle = createCircle('admin_alice', 'Binary Beasts');
 
-      // Bob joins with code
-      const joinBob = joinCircleByCode('bob_coder', circle.inviteCode);
+      // Bob joins with code (testing lowercase and spaces normalization)
+      const formattedCode = `  ${circle.inviteCode.toLowerCase()}  `;
+      const joinBob = joinCircleByCode('bob_coder', formattedCode);
       assert.equal(joinBob.success, true);
       assert.equal(joinBob.circle.members.length, 2);
       assert.ok(joinBob.circle.members.some((m) => m.username === 'bob_coder'));
@@ -130,6 +131,7 @@ describe('Stage 2: Circle Management & Member Administration', () => {
 
       const inviteRes = sendCircleInvite('admin_alice', 'charlie_dev', circle.id, circle.name);
       assert.equal(inviteRes.success, true);
+      assert.equal(inviteRes.invite.notificationText, 'admin_alice invited you in Recursion Club');
 
       // Appears in pending outgoing invites for the circle
       const circleInvites = getCirclePendingInvites(circle.id);

@@ -653,11 +653,41 @@ export function deleteUser(identifier) {
   const clean = identifier.trim().toLowerCase();
   const users = getUsers();
   const initialLength = users.length;
-  const filtered = users.filter(
-    (u) => u.email.toLowerCase() !== clean && u.username.toLowerCase() !== clean
+
+  const targetUser = users.find(
+    (u) => (u.email && u.email.toLowerCase() === clean) || (u.username && u.username.toLowerCase() === clean)
   );
+  const targetEmail = (targetUser?.email || '').toLowerCase();
+  const targetUsername = (targetUser?.username || '').toLowerCase();
+
+  const filtered = users.filter((u) => {
+    const uEmail = (u.email || '').toLowerCase();
+    const uName = (u.username || '').toLowerCase();
+    return (
+      uEmail !== clean &&
+      uName !== clean &&
+      (!targetEmail || uEmail !== targetEmail) &&
+      (!targetUsername || uName !== targetUsername)
+    );
+  });
 
   saveUsers(filtered);
+
+  // Clear all user-associated records and caches
+  try {
+    const keysToPurge = [clean, targetEmail, targetUsername].filter(Boolean);
+    for (const key of keysToPurge) {
+      localStorage.removeItem(`codelife_user_streaks_${key}`);
+      localStorage.removeItem(`codelife_code_store_problems_${key}`);
+      localStorage.removeItem(`codelife_user_profiles_${key}`);
+      localStorage.removeItem(`codelife_user_privacy_${key}`);
+      localStorage.removeItem(`codelife_blocked_users_${key}`);
+      localStorage.removeItem(`codelife_group_circles_${key}`);
+      localStorage.removeItem(`codelife_group_invites_${key}`);
+    }
+  } catch {
+    // Ignore storage errors in restricted contexts
+  }
 
   // If currently active user was deleted, purge session immediately
   try {
@@ -666,11 +696,18 @@ export function deleteUser(identifier) {
       const active = JSON.parse(rawActive);
       const aEmail = (active.email || '').toLowerCase();
       const aUname = (active.username || '').toLowerCase();
-      if (aEmail === clean || aUname === clean) {
+      if (
+        aEmail === clean ||
+        aUname === clean ||
+        (targetEmail && aEmail === targetEmail) ||
+        (targetUsername && aUname === targetUsername)
+      ) {
         localStorage.removeItem('codelife_active_user');
         localStorage.removeItem('codelife_remembered_credentials');
         if (typeof window !== 'undefined') {
-          window.dispatchEvent(new CustomEvent('codelife_auth_invalidated', { detail: { identifier: clean } }));
+          window.dispatchEvent(
+            new CustomEvent('codelife_auth_invalidated', { detail: { identifier: clean } })
+          );
         }
       }
     }
@@ -683,7 +720,7 @@ export function deleteUser(identifier) {
     fetch('/api/auth/delete-user', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ identifier: clean }),
+      body: JSON.stringify({ identifier: targetEmail || targetUsername || clean }),
     }).catch(() => {});
   }
 

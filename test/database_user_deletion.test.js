@@ -133,4 +133,39 @@ describe('Database User Deletion & Session Access Suite', () => {
     const existsAfterDelete = await verifyUserExistsInDatabase('alice_w');
     assert.equal(existsAfterDelete, false);
   });
+
+  test('5. deleteUser completely cleans up all user practice data, streaks, profiles, and active session', () => {
+    const user = {
+      name: 'Sam Fisher',
+      username: 'sam_fisher',
+      email: 'sam@echelon.org',
+      password: 'password123',
+    };
+
+    saveUsers([user]);
+    setActiveUser(user);
+
+    // Populate user-specific data
+    localStorage.setItem('codelife_user_streaks_sam_fisher', JSON.stringify({ current_streak: 5 }));
+    localStorage.setItem('codelife_code_store_problems_sam_fisher', JSON.stringify([{ id: 1, title: 'Code' }]));
+    localStorage.setItem('codelife_user_profiles_sam_fisher', JSON.stringify({ fullName: 'Sam Fisher' }));
+    localStorage.setItem('codelife_user_privacy_sam_fisher', JSON.stringify({ showStats: true }));
+
+    assert.ok(localStorage.getItem('codelife_user_streaks_sam_fisher'));
+    assert.ok(localStorage.getItem('codelife_code_store_problems_sam_fisher'));
+    assert.ok(localStorage.getItem('codelife_user_profiles_sam_fisher'));
+    assert.ok(localStorage.getItem('codelife_user_privacy_sam_fisher'));
+
+    // Trigger delete account
+    const deleted = deleteUser('sam_fisher');
+    assert.equal(deleted, true);
+
+    // Verify all associated data and session are completely purged
+    assert.equal(localStorage.getItem('codelife_user_streaks_sam_fisher'), null);
+    assert.equal(localStorage.getItem('codelife_code_store_problems_sam_fisher'), null);
+    assert.equal(localStorage.getItem('codelife_user_profiles_sam_fisher'), null);
+    assert.equal(localStorage.getItem('codelife_user_privacy_sam_fisher'), null);
+    assert.equal(localStorage.getItem('codelife_active_user'), null);
+    assert.equal(findUser('sam_fisher'), null);
+  });
 });
