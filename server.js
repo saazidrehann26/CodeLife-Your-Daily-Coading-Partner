@@ -72,7 +72,7 @@ function isValidApprovedEmail(email) {
  */
 async function findSupabaseUser(identifier) {
   if (!supabaseAdmin || !identifier) return null;
-  const clean = identifier.trim().toLowerCase();
+  const clean = identifier.trim().toLowerCase().replace(/^@/, '');
   const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
   if (error || !Array.isArray(users)) return null;
 
@@ -80,7 +80,7 @@ async function findSupabaseUser(identifier) {
     users.find(
       (u) =>
         u.email?.toLowerCase() === clean ||
-        u.user_metadata?.username?.toLowerCase() === clean
+        (u.user_metadata?.username || '').toLowerCase().replace(/^@/, '') === clean
     ) || null
   );
 }
@@ -645,10 +645,10 @@ app.post('/api/circles/join', async (req, res) => {
   if (!username || !inviteCode) {
     return res.status(400).json({ success: false, error: 'Username and invite code are required.' });
   }
-  const cleanUser = username.trim().toLowerCase();
+  const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
   const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-  // PRIMARY: search Supabase user_metadata.created_circles (works on Vercel serverless)
+  // PRIMARY: search Supabase user_metadata.created_circles & joined_circles (works on Vercel serverless)
   let circles = [];
   let circleIndex = -1;
 
@@ -660,7 +660,9 @@ app.post('/api/circles/join', async (req, res) => {
           const uCircles = Array.isArray(u.user_metadata?.created_circles)
             ? u.user_metadata.created_circles
             : [];
-          const found = uCircles.find((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+          const found = uCircles.find(
+            (c) => (c.inviteCode || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanCode
+          );
           if (found) {
             circles = [found];
             circleIndex = 0;
@@ -677,7 +679,9 @@ app.post('/api/circles/join', async (req, res) => {
   if (circleIndex === -1) {
     try {
       const fileCircles = loadCirclesFromFile();
-      const idx = fileCircles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+      const idx = fileCircles.findIndex(
+        (c) => (c.inviteCode || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanCode
+      );
       if (idx !== -1) {
         circles = fileCircles;
         circleIndex = idx;
@@ -686,13 +690,13 @@ app.post('/api/circles/join', async (req, res) => {
   }
 
   if (circleIndex === -1) {
-    return res.status(404).json({ success: false, error: 'Circle not found. Please verify the 6-character invite code.' });
+    return res.status(404).json({ success: false, error: 'Circle not found. Please verify the circle code.' });
   }
 
   const circle = circles[circleIndex];
   const members = Array.isArray(circle.members) ? circle.members : [];
 
-  if (members.some((m) => (m.username || '').toLowerCase() === cleanUser)) {
+  if (members.some((m) => (m.username || '').toLowerCase().replace(/^@/, '') === cleanUser)) {
     return res.json({ success: true, circle, message: 'Already a member' });
   }
 
@@ -718,7 +722,7 @@ app.post('/api/circles/join', async (req, res) => {
 
   // Clear pending invite for this user
   const invites = loadInvitesFromFile().filter(
-    (inv) => !((inv.targetUsername || '').toLowerCase() === cleanUser && inv.circleId === circle.id)
+    (inv) => !((inv.targetUsername || '').toLowerCase().replace(/^@/, '') === cleanUser && inv.circleId === circle.id)
   );
   saveInvitesToFile(invites);
 
@@ -742,8 +746,19 @@ app.post('/api/circles/join', async (req, res) => {
         const pendingInvites = Array.isArray(joiningUser.user_metadata?.pending_invites)
           ? joiningUser.user_metadata.pending_invites.filter((inv) => inv.circleId !== circle.id)
           : [];
+        const currentJoined = Array.isArray(joiningUser.user_metadata?.joined_circles)
+          ? joiningUser.user_metadata.joined_circles
+          : [];
+        const jIdx = currentJoined.findIndex((c) => c.id === circle.id);
+        if (jIdx !== -1) currentJoined[jIdx] = updatedCircle;
+        else currentJoined.unshift(updatedCircle);
+
         await supabaseAdmin.auth.admin.updateUserById(joiningUser.id, {
-          user_metadata: { ...joiningUser.user_metadata, pending_invites: pendingInvites },
+          user_metadata: {
+            ...joiningUser.user_metadata,
+            joined_circles: currentJoined,
+            pending_invites: pendingInvites,
+          },
         });
       }
     } catch (e) {
@@ -752,6 +767,59 @@ app.post('/api/circles/join', async (req, res) => {
   }
 
   return res.json({ success: true, circle: updatedCircle });
+});
+
+/**
+ * POST /api/circles/delete
+ * Delete circle from Supabase and local DB
+ */
+app.post('/api/circles/delete', async (req, res) => {
+  const { adminUsername, circleId } = req.body || {};
+  if (!adminUsername || !circleId) {
+    return res.status(400).json({ error: 'adminUsername and circleId required' });
+  }
+  const cleanAdmin = adminUsername.trim().toLowerCase().replace(/^@/, '');
+
+  // Delete from local file
+  try {
+    const circles = loadCirclesFromFile();
+    const updated = circles.filter((c) => c.id !== circleId);
+    saveCirclesToFile(updated);
+  } catch (_e) { /* no-op */ }
+
+  // Delete from Supabase
+  if (supabaseAdmin) {
+    try {
+      const adminUser = await findSupabaseUser(cleanAdmin);
+      if (adminUser && adminUser.id) {
+        const currentCircles = Array.isArray(adminUser.user_metadata?.created_circles)
+          ? adminUser.user_metadata.created_circles.filter((c) => c.id !== circleId)
+          : [];
+        await supabaseAdmin.auth.admin.updateUserById(adminUser.id, {
+          user_metadata: { ...adminUser.user_metadata, created_circles: currentCircles },
+        });
+      }
+
+      // Also clean up from any user's joined_circles
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (!error && Array.isArray(users)) {
+        for (const u of users) {
+          if (Array.isArray(u.user_metadata?.joined_circles)) {
+            const filteredJoined = u.user_metadata.joined_circles.filter((c) => c.id !== circleId);
+            if (filteredJoined.length !== u.user_metadata.joined_circles.length) {
+              await supabaseAdmin.auth.admin.updateUserById(u.id, {
+                user_metadata: { ...u.user_metadata, joined_circles: filteredJoined },
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Server] Error deleting circle in Supabase:', e.message);
+    }
+  }
+
+  return res.json({ success: true });
 });
 
 app.get('/api/invites/:username', async (req, res) => {

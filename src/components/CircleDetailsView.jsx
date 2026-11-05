@@ -3,7 +3,7 @@ import {
   getCircleById,
   removeMemberFromCircle,
   leaveCircle,
-  deleteCircle,
+  deleteCircleAsync,
   sendCircleInvite,
   getCirclePendingInvites,
   revokeCircleInvite,
@@ -187,9 +187,9 @@ export default function CircleDetailsView({
     }
   };
 
-  const handleDeleteCircle = () => {
+  const handleDeleteCircle = async () => {
     if (!isAdmin) return;
-    const res = deleteCircle(currentUser.username, circle.id);
+    const res = await deleteCircleAsync(currentUser.username, circle.id);
     if (res.success) {
       setShowDeleteModal(false);
       onCircleDeleted?.(circle.id);

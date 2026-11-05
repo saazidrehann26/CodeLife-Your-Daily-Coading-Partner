@@ -123,6 +123,38 @@ describe('Stage 2: Circle Management & Member Administration', () => {
       assert.equal(join3.success, false);
       assert.match(join3.error, /full|limit/i);
     });
+
+    test('Creates custom circle with custom invite code (e.g. ELITE1) and allows other users to join', () => {
+      // Admin builds a custom circle with code "ELITE1", category "Competitive Battles", capacity 25
+      const customCircle = createCircle(
+        'admin_alice',
+        'Elite Coders',
+        25,
+        'ELITE1',
+        'Competitive Battles',
+        'Only the best algorithmic problem solvers'
+      );
+
+      assert.ok(customCircle);
+      assert.equal(customCircle.name, 'Elite Coders');
+      assert.equal(customCircle.inviteCode, 'ELITE1');
+      assert.equal(customCircle.category, 'Competitive Battles');
+      assert.equal(customCircle.maxMembers, 25);
+      assert.equal(customCircle.description, 'Only the best algorithmic problem solvers');
+
+      // Bob joins with code "elite1" (lowercase, with whitespace)
+      const bobJoin = joinCircleByCode('bob_coder', '  elite1  ');
+      assert.equal(bobJoin.success, true);
+      assert.equal(bobJoin.circle.name, 'Elite Coders');
+      assert.equal(bobJoin.circle.members.length, 2);
+      assert.ok(bobJoin.circle.members.some((m) => m.username === 'bob_coder'));
+
+      // Charlie also joins with code "@admin_alice's code ELITE1"
+      const charlieJoin = joinCircleByCode('@charlie_dev', 'ELITE1');
+      assert.equal(charlieJoin.success, true);
+      assert.equal(charlieJoin.circle.members.length, 3);
+      assert.ok(charlieJoin.circle.members.some((m) => m.username === 'charlie_dev'));
+    });
   });
 
   describe('3. Multi-Channel Invitations (Username, Email, Revocation)', () => {

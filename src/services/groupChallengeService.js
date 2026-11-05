@@ -353,20 +353,53 @@ export function getCircleById(circleId) {
  * @param {number} [maxMembers=DEFAULT_MAX_CIRCLE_MEMBERS] 
  * @returns {object|null}
  */
-export function createCircle(creatorUsername, circleName, maxMembers = DEFAULT_MAX_CIRCLE_MEMBERS) {
+/**
+ * Create a new circle
+ * Supports custom invite code, category, and capacity
+ * @param {string} creatorUsername 
+ * @param {string} circleName 
+ * @param {number} [maxMembers=DEFAULT_MAX_CIRCLE_MEMBERS] 
+ * @param {string} [customInviteCode=null]
+ * @param {string} [category='General']
+ * @param {string} [description='']
+ * @returns {object|null}
+ */
+export function createCircle(
+  creatorUsername,
+  circleName,
+  maxMembers = DEFAULT_MAX_CIRCLE_MEMBERS,
+  customInviteCode = null,
+  category = 'General',
+  description = ''
+) {
   if (!creatorUsername || !circleName?.trim()) return null;
-  const clean = creatorUsername.trim().toLowerCase();
+  const clean = creatorUsername.trim().toLowerCase().replace(/^@/, '');
   const all = getAllCircles();
 
-  // Generate robust unique 6-char alphanumeric invite code
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let inviteCode = '';
-  do {
-    inviteCode = '';
-    for (let i = 0; i < 6; i++) {
-      inviteCode += chars.charAt(Math.floor(Math.random() * chars.length));
+  if (customInviteCode && typeof customInviteCode === 'string') {
+    const sanitizedCode = customInviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (sanitizedCode.length >= 3 && sanitizedCode.length <= 12) {
+      // Check if code is already used by another circle
+      const exists = all.some(
+        (c) => (c.inviteCode || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === sanitizedCode
+      );
+      if (!exists) {
+        inviteCode = sanitizedCode;
+      }
     }
-  } while (all.some((c) => (c.inviteCode || '').toUpperCase() === inviteCode));
+  }
+
+  // If no valid custom code provided or it was taken, auto-generate unique 6-char code
+  if (!inviteCode) {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    do {
+      inviteCode = '';
+      for (let i = 0; i < 6; i++) {
+        inviteCode += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+    } while (all.some((c) => (c.inviteCode || '').toUpperCase() === inviteCode));
+  }
 
   const newCircle = {
     id: `circle_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
@@ -376,6 +409,8 @@ export function createCircle(creatorUsername, circleName, maxMembers = DEFAULT_M
     status: 'No active match', // 'No active match' | 'Lobby open' | 'Match live'
     createdAt: new Date().toISOString(),
     inviteCode,
+    category: category || 'General',
+    description: (description || '').trim(),
     members: [
       {
         username: clean,
@@ -403,8 +438,15 @@ export function createCircle(creatorUsername, circleName, maxMembers = DEFAULT_M
 /**
  * Create a new circle and await remote server / Supabase confirmation
  */
-export async function createCircleAsync(creatorUsername, circleName, maxMembers = DEFAULT_MAX_CIRCLE_MEMBERS) {
-  const newCircle = createCircle(creatorUsername, circleName, maxMembers);
+export async function createCircleAsync(
+  creatorUsername,
+  circleName,
+  maxMembers = DEFAULT_MAX_CIRCLE_MEMBERS,
+  customInviteCode = null,
+  category = 'General',
+  description = ''
+) {
+  const newCircle = createCircle(creatorUsername, circleName, maxMembers, customInviteCode, category, description);
   if (!newCircle) return null;
 
   if (typeof window !== 'undefined' && window.navigator?.onLine) {
@@ -469,11 +511,13 @@ export function joinCircleByCode(username, inviteCode) {
   if (!username || !inviteCode) {
     return { success: false, error: 'Username and invite code are required.' };
   }
-  const cleanUser = username.trim().toLowerCase();
+  const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
   const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
   const all = getAllCircles();
-  const circleIndex = all.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+  const circleIndex = all.findIndex(
+    (c) => (c.inviteCode || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanCode
+  );
 
   if (circleIndex === -1) {
     return { success: false, error: 'Circle not found. Please verify the 6-character invite code.' };
@@ -483,7 +527,7 @@ export function joinCircleByCode(username, inviteCode) {
   const members = circle.members || [];
 
   // Check if already a member
-  if (members.some((m) => (m.username || '').toLowerCase() === cleanUser)) {
+  if (members.some((m) => (m.username || '').toLowerCase().replace(/^@/, '') === cleanUser)) {
     return { success: false, error: 'You are already a member of this circle.', circle };
   }
 
@@ -535,7 +579,7 @@ export async function joinCircleByCodeAsync(username, inviteCode) {
   if (!username || !inviteCode) {
     return { success: false, error: 'Username and invite code are required.' };
   }
-  const cleanUser = username.trim().toLowerCase();
+  const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
   const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
   const localRes = joinCircleByCode(cleanUser, cleanCode);
@@ -721,13 +765,13 @@ export function leaveCircle(username, circleId) {
  */
 export function deleteCircle(adminUsername, circleId) {
   if (!adminUsername || !circleId) return { success: false, error: 'Missing parameters.' };
-  const cleanAdmin = adminUsername.trim().toLowerCase();
+  const cleanAdmin = adminUsername.trim().toLowerCase().replace(/^@/, '');
 
   const all = getAllCircles();
   const circle = all.find((c) => c.id === circleId);
   if (!circle) return { success: false, error: 'Circle not found.' };
 
-  if ((circle.adminUsername || '').toLowerCase() !== cleanAdmin) {
+  if ((circle.adminUsername || '').toLowerCase().replace(/^@/, '') !== cleanAdmin) {
     return { success: false, error: 'Only the circle admin can delete this circle.' };
   }
 
@@ -743,6 +787,28 @@ export function deleteCircle(adminUsername, circleId) {
       savePendingCircleInvites(u.username, filtered);
     }
   });
+
+  return { success: true };
+}
+
+/**
+ * Delete a circle and sync deletion with backend / Supabase
+ */
+export async function deleteCircleAsync(adminUsername, circleId) {
+  const localRes = deleteCircle(adminUsername, circleId);
+  if (!localRes.success) return localRes;
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    try {
+      await fetch('/api/circles/delete', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminUsername, circleId }),
+      });
+    } catch (e) {
+      console.warn('Could not sync circle deletion to server:', e);
+    }
+  }
 
   return { success: true };
 }

@@ -7,6 +7,7 @@ import {
   joinCircleByCodeAsync,
   syncCirclesAndInvitesAsync,
   sendCircleInviteAsync,
+  deleteCircleAsync,
   searchUsers,
   getCircleMatchHistory,
 } from '../services/groupChallengeService';
@@ -34,13 +35,25 @@ export default function GroupChallengePage({
   const [matchHistory, setMatchHistory] = useState(() => getCircleMatchHistory());
   const [selectedCircleId, setSelectedCircleId] = useState(null);
 
-  // Modals
+  // Modals & Forms
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCircleName, setNewCircleName] = useState('');
+  const [customInviteCodeInput, setCustomInviteCodeInput] = useState('');
+  const [circleCategory, setCircleCategory] = useState('Competitive Battles');
+  const [circleMaxMembers, setCircleMaxMembers] = useState(50);
+  const [circleDescription, setCircleDescription] = useState('');
   const [inviteFriendsInput, setInviteFriendsInput] = useState('');
+  const [createCircleError, setCreateCircleError] = useState(null);
+  const [createLoading, setCreateLoading] = useState(false);
+
   const [showJoinModal, setShowJoinModal] = useState(false);
   const [joinInviteCode, setJoinInviteCode] = useState('');
   const [joinModalError, setJoinModalError] = useState(null);
+  const [joinLoading, setJoinLoading] = useState(false);
+
+  // Toasts
+  const [copiedCodeId, setCopiedCodeId] = useState(null);
+  const [successToast, setSuccessToast] = useState(null);
 
   // Member search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -54,6 +67,38 @@ export default function GroupChallengePage({
 
   // Selected member profile modal
   const [viewingProfileUsername, setViewingProfileUsername] = useState(null);
+
+  const handleCopyCode = (code) => {
+    if (!code) return;
+    try {
+      if (navigator?.clipboard?.writeText) {
+        navigator.clipboard.writeText(code);
+      }
+    } catch {
+      // Ignore clipboard write restrictions
+    }
+    setCopiedCodeId(code);
+    setTimeout(() => setCopiedCodeId(null), 2000);
+  };
+
+  const generateRandomCode = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setCustomInviteCodeInput(code);
+  };
+
+  const handleDeleteCircleDirect = async (circleId, circleName) => {
+    if (!window.confirm(`Are you sure you want to delete "${circleName}"? This action cannot be undone.`)) {
+      return;
+    }
+    await deleteCircleAsync(currentUser.username, circleId);
+    setCircles(getUserCircles(currentUser.username));
+    setSuccessToast(`Circle "${circleName}" deleted.`);
+    setTimeout(() => setSuccessToast(null), 3000);
+  };
 
   // URL query or hash detection on initial mount (e.g. #group-challenge?join=CODE or #group-challenge/circle/:id)
   useEffect(() => {
@@ -162,26 +207,50 @@ export default function GroupChallengePage({
     }
   };
 
-  // Create circle handler with optional friend invitations
+  // Create custom circle handler with optional friend invitations
   const handleCreateCircleSubmit = async (e) => {
     e.preventDefault();
     if (!newCircleName.trim() || !currentUser?.username) return;
-    const created = await createCircleAsync(currentUser.username, newCircleName.trim());
-    if (created) {
-      if (inviteFriendsInput.trim()) {
-        const friendList = inviteFriendsInput
-          .split(/[,;\s]+/)
-          .map((f) => f.replace(/^@/, '').trim())
-          .filter(Boolean);
-        for (const friend of friendList) {
-          await sendCircleInviteAsync(currentUser.username, friend, created.id, created.name);
+
+    setCreateLoading(true);
+    setCreateCircleError(null);
+
+    try {
+      const created = await createCircleAsync(
+        currentUser.username,
+        newCircleName.trim(),
+        circleMaxMembers,
+        customInviteCodeInput.trim() || null,
+        circleCategory,
+        circleDescription
+      );
+
+      if (created) {
+        if (inviteFriendsInput.trim()) {
+          const friendList = inviteFriendsInput
+            .split(/[,;\s]+/)
+            .map((f) => f.replace(/^@/, '').trim())
+            .filter(Boolean);
+          for (const friend of friendList) {
+            await sendCircleInviteAsync(currentUser.username, friend, created.id, created.name);
+          }
         }
+        setCircles(getUserCircles(currentUser.username));
+        setNewCircleName('');
+        setCustomInviteCodeInput('');
+        setCircleDescription('');
+        setInviteFriendsInput('');
+        setShowCreateModal(false);
+        setSelectedCircleId(created.id);
+        setSuccessToast(`Circle "${created.name}" created! Invite code: ${created.inviteCode}`);
+        setTimeout(() => setSuccessToast(null), 4000);
+      } else {
+        setCreateCircleError('Could not create circle. Please check the circle name and invite code.');
       }
-      setCircles(getUserCircles(currentUser.username));
-      setNewCircleName('');
-      setInviteFriendsInput('');
-      setShowCreateModal(false);
-      setSelectedCircleId(created.id);
+    } catch (err) {
+      setCreateCircleError(err.message || 'Error creating circle.');
+    } finally {
+      setCreateLoading(false);
     }
   };
 
@@ -191,16 +260,32 @@ export default function GroupChallengePage({
     const cleanCode = joinInviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
     if (!cleanCode || !currentUser?.username) return;
 
-    const res = await joinCircleByCodeAsync(currentUser.username, cleanCode);
-    if (res.circle) {
-      setCircles(getUserCircles(currentUser.username));
-      setPendingInvites(getPendingCircleInvites(currentUser.username));
-      setShowJoinModal(false);
-      setJoinInviteCode('');
-      setJoinModalError(null);
-      setSelectedCircleId(res.circle.id);
-    } else {
-      setJoinModalError(res.error || 'Circle not found. Please verify the 6-character invite code.');
+    setJoinLoading(true);
+    setJoinModalError(null);
+
+    try {
+      const res = await joinCircleByCodeAsync(currentUser.username, cleanCode);
+      if (res.success && res.circle) {
+        setCircles(getUserCircles(currentUser.username));
+        setPendingInvites(getPendingCircleInvites(currentUser.username));
+        setShowJoinModal(false);
+        setJoinInviteCode('');
+        setJoinModalError(null);
+        setSelectedCircleId(res.circle.id);
+        setSuccessToast(`Joined "${res.circle.name}" successfully!`);
+        setTimeout(() => setSuccessToast(null), 4000);
+      } else if (res.circle) {
+        // Already a member
+        setCircles(getUserCircles(currentUser.username));
+        setShowJoinModal(false);
+        setSelectedCircleId(res.circle.id);
+      } else {
+        setJoinModalError(res.error || 'Circle not found. Please verify the circle code.');
+      }
+    } catch (err) {
+      setJoinModalError(err.message || 'Error joining circle.');
+    } finally {
+      setJoinLoading(false);
     }
   };
 
@@ -274,29 +359,58 @@ export default function GroupChallengePage({
             <button
               type="button"
               className="spherical-btn spherical-btn-primary"
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => {
+                setCreateCircleError(null);
+                setShowCreateModal(true);
+              }}
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
                 <line x1="12" y1="5" x2="12" y2="19" />
                 <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
-              <span>Create a Circle</span>
+              <span>Build Custom Circle</span>
             </button>
 
             <button
               type="button"
               className="spherical-btn"
-              onClick={() => setShowJoinModal(true)}
+              onClick={() => {
+                setJoinModalError(null);
+                setShowJoinModal(true);
+              }}
             >
               <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4" />
                 <polyline points="10 17 15 12 10 7" />
                 <line x1="15" y1="12" x2="3" y2="12" />
               </svg>
-              <span>Join with Invite Code</span>
+              <span>Join with Circle Code</span>
             </button>
           </div>
         </section>
+
+        {/* Success Feedback Toast */}
+        {successToast && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.9), rgba(27, 94, 32, 0.9))',
+              border: '1px solid rgba(129, 199, 132, 0.5)',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '16px',
+              boxShadow: '0 4px 18px rgba(0, 0, 0, 0.35)',
+            }}
+          >
+            <span style={{ fontSize: '18px' }}>✓</span>
+            <span>{successToast}</span>
+          </div>
+        )}
 
         {/* Real-time Incoming Invite Notification Alert */}
         {pendingInvites.length > 0 && (
@@ -400,9 +514,12 @@ export default function GroupChallengePage({
               <button
                 type="button"
                 className="spherical-btn spherical-btn-primary"
-                onClick={() => setShowCreateModal(true)}
+                onClick={() => {
+                  setCreateCircleError(null);
+                  setShowCreateModal(true);
+                }}
               >
-                + Create Your First Circle
+                + Build Your First Circle
               </button>
             </div>
           ) : (
@@ -415,6 +532,10 @@ export default function GroupChallengePage({
                     ? 'gc-badge-lobby'
                     : 'gc-badge-idle';
 
+                const isCurrentAdmin =
+                  (c.adminUsername || '').toLowerCase().replace(/^@/, '') ===
+                  (currentUser?.username || '').toLowerCase().replace(/^@/, '');
+
                 return (
                   <div
                     key={c.id}
@@ -424,28 +545,81 @@ export default function GroupChallengePage({
                   >
                     <div className="gc-circle-card-top">
                       <div>
-                        <h3 className="gc-circle-name">{c.name}</h3>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                          <h3 className="gc-circle-name">{c.name}</h3>
+                          {c.category && (
+                            <span
+                              style={{
+                                fontSize: '11px',
+                                padding: '2px 8px',
+                                borderRadius: '9999px',
+                                background: 'rgba(230, 196, 180, 0.15)',
+                                border: '1px solid rgba(230, 196, 180, 0.3)',
+                                color: '#e6c4b4',
+                                fontWeight: 600,
+                              }}
+                            >
+                              {c.category}
+                            </span>
+                          )}
+                        </div>
                         <span className="gc-circle-meta-text">
                           {c.members?.length || 1} members • Admin @{c.adminUsername}
                         </span>
+                        {c.description && (
+                          <p style={{ margin: '6px 0 0 0', fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)' }}>
+                            {c.description}
+                          </p>
+                        )}
                       </div>
                       <span className={`gc-status-badge ${badgeClass}`}>{c.status}</span>
                     </div>
 
                     <div className="gc-circle-footer">
-                      <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.6)' }}>
-                        Code: <strong>{c.inviteCode || 'CODE'}</strong>
-                      </span>
-                      <button
-                        type="button"
-                        className="spherical-btn spherical-btn-sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setSelectedCircleId(c.id);
-                        }}
-                      >
-                        Enter Circle
-                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)' }}>
+                          Code: <strong style={{ color: '#fff', letterSpacing: '1px' }}>{c.inviteCode || 'CODE'}</strong>
+                        </span>
+                        <button
+                          type="button"
+                          className="spherical-btn spherical-btn-sm"
+                          title="Copy Circle Code"
+                          style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCopyCode(c.inviteCode);
+                          }}
+                        >
+                          {copiedCodeId === c.inviteCode ? '✓ Copied' : '📋 Copy'}
+                        </button>
+                      </div>
+
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        {isCurrentAdmin && (
+                          <button
+                            type="button"
+                            className="spherical-btn spherical-btn-sm spherical-btn-danger"
+                            title="Delete Circle"
+                            style={{ padding: '3px 8px', fontSize: '11px', height: '26px' }}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteCircleDirect(c.id, c.name);
+                            }}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="spherical-btn spherical-btn-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedCircleId(c.id);
+                          }}
+                        >
+                          Enter Circle
+                        </button>
+                      </div>
                     </div>
                   </div>
                 );
@@ -592,12 +766,17 @@ export default function GroupChallengePage({
       {/* =====================================================================
           3. MODALS
           ===================================================================== */}
-      {/* Create Circle Modal */}
+      {/* Build Custom Circle Modal */}
       {showCreateModal && (
         <div className="dash-modal-backdrop" onClick={() => setShowCreateModal(false)}>
-          <div className="dash-modal-window" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
+          <div className="dash-modal-window" style={{ maxWidth: '520px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-row">
-              <h3 className="modal-title">Create a Friend Circle</h3>
+              <div>
+                <h3 className="modal-title" style={{ margin: 0 }}>Build a Custom Circle</h3>
+                <span style={{ fontSize: '12px', color: '#e6c4b4', marginTop: '2px', display: 'block' }}>
+                  Create your custom friend circle with custom invite code, category & capacity
+                </span>
+              </div>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -607,13 +786,14 @@ export default function GroupChallengePage({
               </button>
             </div>
 
-            <form onSubmit={handleCreateCircleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleCreateCircleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
+              {/* Circle Name */}
               <div className="modal-form-group">
-                <label className="modal-label">Circle Name</label>
+                <label className="modal-label">Circle Name *</label>
                 <input
                   type="text"
                   className="modal-input"
-                  placeholder="e.g. Code Warriors, Algorithm Squad"
+                  placeholder="e.g. Elite Coders, Algorithm Squad"
                   value={newCircleName}
                   onChange={(e) => setNewCircleName(e.target.value)}
                   required
@@ -621,8 +801,91 @@ export default function GroupChallengePage({
                 />
               </div>
 
+              {/* Custom Invite Code with Auto-Gen */}
               <div className="modal-form-group">
-                <label className="modal-label">Invite Friends (Optional)</label>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <label className="modal-label" style={{ marginBottom: 0 }}>
+                    Custom Circle Code <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>(Optional)</span>
+                  </label>
+                  <button
+                    type="button"
+                    className="spherical-btn spherical-btn-sm"
+                    style={{ padding: '2px 8px', fontSize: '11px', height: '24px' }}
+                    onClick={generateRandomCode}
+                  >
+                    🎲 Auto-Gen Code
+                  </button>
+                </div>
+                <div style={{ display: 'flex', gap: '8px', marginTop: '6px' }}>
+                  <input
+                    type="text"
+                    className="modal-input"
+                    placeholder="e.g. ELITE1 (3–10 chars) or leave blank"
+                    value={customInviteCodeInput}
+                    onChange={(e) => setCustomInviteCodeInput(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase())}
+                    maxLength={10}
+                    style={{ textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 700 }}
+                  />
+                </div>
+                <span style={{ fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.6)', marginTop: '4px', display: 'block' }}>
+                  Other users can join using this code. If left blank, a random 6-character code will be generated.
+                </span>
+              </div>
+
+              {/* Category & Capacity Row */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                <div className="modal-form-group">
+                  <label className="modal-label">Category / Focus</label>
+                  <select
+                    className="modal-input"
+                    value={circleCategory}
+                    onChange={(e) => setCircleCategory(e.target.value)}
+                    style={{ background: 'rgba(26, 16, 14, 0.95)', color: '#ffffff' }}
+                  >
+                    <option value="Competitive Battles">⚔️ Competitive Battles</option>
+                    <option value="Daily Algorithms">💡 Daily Algorithms</option>
+                    <option value="Web Development">🌐 Web Development</option>
+                    <option value="Interview Prep">🎯 Interview Prep</option>
+                    <option value="Casual Coding">☕ Casual Coding</option>
+                  </select>
+                </div>
+
+                <div className="modal-form-group">
+                  <label className="modal-label">Max Members</label>
+                  <select
+                    className="modal-input"
+                    value={circleMaxMembers}
+                    onChange={(e) => setCircleMaxMembers(Number(e.target.value))}
+                    style={{ background: 'rgba(26, 16, 14, 0.95)', color: '#ffffff' }}
+                  >
+                    <option value={10}>10 Members</option>
+                    <option value={25}>25 Members</option>
+                    <option value={50}>50 Members (Standard)</option>
+                    <option value={100}>100 Members (Large)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Motto / Description */}
+              <div className="modal-form-group">
+                <label className="modal-label">
+                  Motto or Description <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>(Optional)</span>
+                </label>
+                <input
+                  type="text"
+                  className="modal-input"
+                  placeholder="e.g. Master algorithms and climb the leaderboard"
+                  value={circleDescription}
+                  onChange={(e) => setCircleDescription(e.target.value)}
+                  maxLength={100}
+                />
+              </div>
+
+              {/* Invite Friends */}
+              <div className="modal-form-group">
+                <label className="modal-label">
+                  Invite Friends <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>(Optional)</span>
+                </label>
                 <input
                   type="text"
                   className="modal-input"
@@ -630,25 +893,32 @@ export default function GroupChallengePage({
                   value={inviteFriendsInput}
                   onChange={(e) => setInviteFriendsInput(e.target.value)}
                 />
-                <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '4px', display: 'block' }}>
-                  Friends will receive a notification: &quot;@{currentUser?.username} invited you in {newCircleName.trim() || 'this circle'}&quot;.
+                <span style={{ fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.6)', marginTop: '4px', display: 'block' }}>
+                  Invited friends will immediately receive a notification to join.
                 </span>
               </div>
+
+              {createCircleError && (
+                <div style={{ color: '#ff8a80', fontSize: '13px', fontWeight: 600, background: 'rgba(244, 67, 54, 0.15)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(244, 67, 54, 0.3)' }}>
+                  {createCircleError}
+                </div>
+              )}
 
               <div className="modal-actions-row">
                 <button
                   type="button"
                   className="spherical-btn"
                   onClick={() => setShowCreateModal(false)}
+                  disabled={createLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="spherical-btn spherical-btn-primary"
-                  disabled={!newCircleName.trim()}
+                  disabled={!newCircleName.trim() || createLoading}
                 >
-                  Create Circle
+                  {createLoading ? 'Building Circle...' : 'Build Circle'}
                 </button>
               </div>
             </form>
@@ -661,7 +931,12 @@ export default function GroupChallengePage({
         <div className="dash-modal-backdrop" onClick={() => setShowJoinModal(false)}>
           <div className="dash-modal-window" style={{ maxWidth: '480px' }} onClick={(e) => e.stopPropagation()}>
             <div className="modal-header-row">
-              <h3 className="modal-title">Join with Invite Code</h3>
+              <div>
+                <h3 className="modal-title" style={{ margin: 0 }}>Join a Friend Circle</h3>
+                <span style={{ fontSize: '12px', color: '#e6c4b4', marginTop: '2px', display: 'block' }}>
+                  Enter the circle code shared by your friend to join their circle
+                </span>
+              </div>
               <button
                 type="button"
                 className="modal-close-btn"
@@ -671,27 +946,30 @@ export default function GroupChallengePage({
               </button>
             </div>
 
-            <form onSubmit={handleJoinByCodeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <form onSubmit={handleJoinByCodeSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
               <div className="modal-form-group">
-                <label className="modal-label">Enter 6-Character Circle Code</label>
+                <label className="modal-label">Circle Code</label>
                 <input
                   type="text"
                   className="modal-input"
-                  placeholder="e.g. A9B2X7"
+                  placeholder="e.g. ELITE1, 4A4NPU"
                   value={joinInviteCode}
                   onChange={(e) => {
                     setJoinInviteCode(e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase());
                     setJoinModalError(null);
                   }}
-                  maxLength={10}
+                  maxLength={12}
                   required
                   autoFocus
-                  style={{ textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 700 }}
+                  style={{ textTransform: 'uppercase', letterSpacing: '3px', fontWeight: 700, fontSize: '16px', textAlign: 'center' }}
                 />
+                <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.65)', marginTop: '6px', textAlign: 'center', display: 'block' }}>
+                  Codes are not case-sensitive (e.g. ELITE1 or elite1)
+                </span>
               </div>
 
               {joinModalError && (
-                <div style={{ color: '#ff8a80', fontSize: '13px', fontWeight: 600 }}>
+                <div style={{ color: '#ff8a80', fontSize: '13px', fontWeight: 600, background: 'rgba(244, 67, 54, 0.15)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(244, 67, 54, 0.3)' }}>
                   {joinModalError}
                 </div>
               )}
@@ -701,15 +979,16 @@ export default function GroupChallengePage({
                   type="button"
                   className="spherical-btn"
                   onClick={() => setShowJoinModal(false)}
+                  disabled={joinLoading}
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   className="spherical-btn spherical-btn-primary"
-                  disabled={!joinInviteCode.trim()}
+                  disabled={!joinInviteCode.trim() || joinLoading}
                 >
-                  Join Circle
+                  {joinLoading ? 'Joining Circle...' : 'Join Circle'}
                 </button>
               </div>
             </form>

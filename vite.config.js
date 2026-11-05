@@ -92,7 +92,7 @@ function backendApiPlugin() {
 
       const findUserInSupabase = async (identifier) => {
         if (!supabaseAdmin || !identifier) return null;
-        const clean = identifier.trim().toLowerCase();
+        const clean = identifier.trim().toLowerCase().replace(/^@/, '');
         try {
           const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
           if (error || !Array.isArray(users)) return null;
@@ -100,7 +100,7 @@ function backendApiPlugin() {
             users.find(
               (u) =>
                 u.email?.toLowerCase() === clean ||
-                u.user_metadata?.username?.toLowerCase() === clean
+                (u.user_metadata?.username || '').toLowerCase().replace(/^@/, '') === clean
             ) || null
           );
         } catch {
@@ -383,8 +383,41 @@ function backendApiPlugin() {
           // 3. Circle routes
           // -----------------------------------------------------------------
           if (pathname === '/api/circles' && req.method === 'GET') {
-            const circles = loadCirclesFromFile();
-            return res.end(JSON.stringify({ success: true, circles }));
+            const circleMap = new Map();
+
+            // PRIMARY: Supabase user_metadata.created_circles & joined_circles
+            if (supabaseAdmin) {
+              try {
+                const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+                if (!error && Array.isArray(users)) {
+                  for (const u of users) {
+                    const uCircles = Array.isArray(u.user_metadata?.created_circles)
+                      ? u.user_metadata.created_circles
+                      : [];
+                    for (const c of uCircles) {
+                      if (c && c.id) circleMap.set(c.id, c);
+                    }
+                    const jCircles = Array.isArray(u.user_metadata?.joined_circles)
+                      ? u.user_metadata.joined_circles
+                      : [];
+                    for (const c of jCircles) {
+                      if (c && c.id && !circleMap.has(c.id)) circleMap.set(c.id, c);
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn('[Vite API] Could not load Supabase circles:', e.message);
+              }
+            }
+
+            // FALLBACK: local file
+            try {
+              for (const c of loadCirclesFromFile()) {
+                if (c && c.id && !circleMap.has(c.id)) circleMap.set(c.id, c);
+              }
+            } catch (_e) { /* no-op */ }
+
+            return res.end(JSON.stringify({ success: true, circles: Array.from(circleMap.values()) }));
           }
 
           if (pathname === '/api/circles' && req.method === 'POST') {
@@ -492,14 +525,14 @@ function backendApiPlugin() {
               res.statusCode = 400;
               return res.end(JSON.stringify({ success: false, error: 'Username and invite code are required.' }));
             }
-            const cleanUser = username.trim().toLowerCase();
+            const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
             const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-            let circles = loadCirclesFromFile();
-            let circleIndex = circles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+            let circles = [];
+            let circleIndex = -1;
 
-            // If not found in local file, look through Supabase users' created_circles
-            if (circleIndex === -1 && supabaseAdmin) {
+            // 1. Search Supabase user_metadata.created_circles
+            if (supabaseAdmin) {
               try {
                 const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
                 if (!error && Array.isArray(users)) {
@@ -507,11 +540,12 @@ function backendApiPlugin() {
                     const uCircles = Array.isArray(u.user_metadata?.created_circles)
                       ? u.user_metadata.created_circles
                       : [];
-                    const found = uCircles.find((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+                    const found = uCircles.find(
+                      (c) => (c.inviteCode || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanCode
+                    );
                     if (found) {
-                      circles.unshift(found);
+                      circles = [found];
                       circleIndex = 0;
-                      saveCirclesToFile(circles);
                       break;
                     }
                   }
@@ -521,15 +555,29 @@ function backendApiPlugin() {
               }
             }
 
+            // 2. Search local file
+            if (circleIndex === -1) {
+              try {
+                const fileCircles = loadCirclesFromFile();
+                const idx = fileCircles.findIndex(
+                  (c) => (c.inviteCode || '').replace(/[^a-zA-Z0-9]/g, '').toUpperCase() === cleanCode
+                );
+                if (idx !== -1) {
+                  circles = fileCircles;
+                  circleIndex = idx;
+                }
+              } catch (_e) { /* no-op */ }
+            }
+
             if (circleIndex === -1) {
               res.statusCode = 404;
-              return res.end(JSON.stringify({ success: false, error: 'Circle not found. Please verify the 6-character invite code.' }));
+              return res.end(JSON.stringify({ success: false, error: 'Circle not found. Please verify the circle code.' }));
             }
 
             const circle = circles[circleIndex];
             const members = Array.isArray(circle.members) ? circle.members : [];
 
-            if (members.some((m) => (m.username || '').toLowerCase() === cleanUser)) {
+            if (members.some((m) => (m.username || '').toLowerCase().replace(/^@/, '') === cleanUser)) {
               return res.end(JSON.stringify({ success: true, circle, message: 'Already a member' }));
             }
 
@@ -556,7 +604,7 @@ function backendApiPlugin() {
 
             // Clear any pending invite for this user
             const invites = loadInvitesFromFile().filter(
-              (inv) => !((inv.targetUsername || '').toLowerCase() === cleanUser && inv.circleId === circle.id)
+              (inv) => !((inv.targetUsername || '').toLowerCase().replace(/^@/, '') === cleanUser && inv.circleId === circle.id)
             );
             saveInvitesToFile(invites);
 
@@ -580,8 +628,19 @@ function backendApiPlugin() {
                   const pendingInvites = Array.isArray(joiningUser.user_metadata?.pending_invites)
                     ? joiningUser.user_metadata.pending_invites.filter((inv) => inv.circleId !== circle.id)
                     : [];
+                  const currentJoined = Array.isArray(joiningUser.user_metadata?.joined_circles)
+                    ? joiningUser.user_metadata.joined_circles
+                    : [];
+                  const jIdx = currentJoined.findIndex((c) => c.id === circle.id);
+                  if (jIdx !== -1) currentJoined[jIdx] = updatedCircle;
+                  else currentJoined.unshift(updatedCircle);
+
                   await supabaseAdmin.auth.admin.updateUserById(joiningUser.id, {
-                    user_metadata: { ...joiningUser.user_metadata, pending_invites: pendingInvites },
+                    user_metadata: {
+                      ...joiningUser.user_metadata,
+                      joined_circles: currentJoined,
+                      pending_invites: pendingInvites,
+                    },
                   });
                 }
               } catch (e) {
@@ -590,6 +649,55 @@ function backendApiPlugin() {
             }
 
             return res.end(JSON.stringify({ success: true, circle: updatedCircle }));
+          }
+
+          if (pathname === '/api/circles/delete' && req.method === 'POST') {
+            const { adminUsername, circleId } = await parseJsonBody(req);
+            if (!adminUsername || !circleId) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'adminUsername and circleId required' }));
+            }
+            const cleanAdmin = adminUsername.trim().toLowerCase().replace(/^@/, '');
+
+            // Delete from local file
+            try {
+              const circles = loadCirclesFromFile();
+              const updated = circles.filter((c) => c.id !== circleId);
+              saveCirclesToFile(updated);
+            } catch (_e) { /* no-op */ }
+
+            // Delete from Supabase
+            if (supabaseAdmin) {
+              try {
+                const adminUser = await findUserInSupabase(cleanAdmin);
+                if (adminUser && adminUser.id) {
+                  const currentCircles = Array.isArray(adminUser.user_metadata?.created_circles)
+                    ? adminUser.user_metadata.created_circles.filter((c) => c.id !== circleId)
+                    : [];
+                  await supabaseAdmin.auth.admin.updateUserById(adminUser.id, {
+                    user_metadata: { ...adminUser.user_metadata, created_circles: currentCircles },
+                  });
+                }
+
+                const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+                if (!error && Array.isArray(users)) {
+                  for (const u of users) {
+                    if (Array.isArray(u.user_metadata?.joined_circles)) {
+                      const filteredJoined = u.user_metadata.joined_circles.filter((c) => c.id !== circleId);
+                      if (filteredJoined.length !== u.user_metadata.joined_circles.length) {
+                        await supabaseAdmin.auth.admin.updateUserById(u.id, {
+                          user_metadata: { ...u.user_metadata, joined_circles: filteredJoined },
+                        });
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn('[Vite API] Error deleting circle in Supabase:', e.message);
+              }
+            }
+
+            return res.end(JSON.stringify({ success: true }));
           }
 
           // -----------------------------------------------------------------
