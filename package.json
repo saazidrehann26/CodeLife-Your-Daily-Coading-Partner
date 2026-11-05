@@ -3,16 +3,13 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "homepage": "https://saazidrehann26.github.io/CodeLife-Your-Daily-Coading-Partner",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
     "lint": "oxlint src",
     "test": "node --test test/*.test.js",
     "server": "node server.js",
-    "preview": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "preview": "vite preview"
   },
   "dependencies": {
     "@emailjs/browser": "^5.0.3",

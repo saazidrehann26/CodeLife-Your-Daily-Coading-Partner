@@ -509,9 +509,36 @@ function saveInvitesToFile(invites) {
   }
 }
 
-app.get('/api/circles', (req, res) => {
-  const circles = loadCirclesFromFile();
-  return res.json({ success: true, circles });
+app.get('/api/circles', async (req, res) => {
+  const circleMap = new Map();
+
+  // PRIMARY: Supabase user_metadata.created_circles
+  if (supabaseAdmin) {
+    try {
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (!error && Array.isArray(users)) {
+        for (const u of users) {
+          const uCircles = Array.isArray(u.user_metadata?.created_circles)
+            ? u.user_metadata.created_circles
+            : [];
+          for (const c of uCircles) {
+            if (c && c.id) circleMap.set(c.id, c);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Server] Could not load Supabase circles:', e.message);
+    }
+  }
+
+  // FALLBACK: local file
+  try {
+    for (const c of loadCirclesFromFile()) {
+      if (c && c.id && !circleMap.has(c.id)) circleMap.set(c.id, c);
+    }
+  } catch (_e) { /* no-op */ }
+
+  return res.json({ success: true, circles: Array.from(circleMap.values()) });
 });
 
 app.post('/api/circles', async (req, res) => {
@@ -519,16 +546,8 @@ app.post('/api/circles', async (req, res) => {
   if (!circle || !circle.id || !circle.name) {
     return res.status(400).json({ error: 'Valid circle object required' });
   }
-  const circles = loadCirclesFromFile();
-  const idx = circles.findIndex((c) => c.id === circle.id);
-  if (idx !== -1) {
-    circles[idx] = { ...circles[idx], ...circle };
-  } else {
-    circles.unshift(circle);
-  }
-  saveCirclesToFile(circles);
 
-  // Backup to Supabase
+  // PRIMARY: persist to Supabase user_metadata (survives Vercel serverless restarts)
   if (supabaseAdmin && circle.adminUsername) {
     try {
       const adminUser = await findSupabaseUser(circle.adminUsername);
@@ -544,11 +563,21 @@ app.post('/api/circles', async (req, res) => {
         });
       }
     } catch (e) {
-      console.warn('[Server] Could not backup circle to Supabase:', e.message);
+      console.warn('[Server] Could not save circle to Supabase:', e.message);
     }
   }
 
-  return res.json({ success: true, circle: circles[idx !== -1 ? idx : 0] });
+  // FALLBACK: also write to local file for dev
+  try {
+    const circles = loadCirclesFromFile();
+    const idx = circles.findIndex((c) => c.id === circle.id);
+    if (idx !== -1) circles[idx] = { ...circles[idx], ...circle };
+    else circles.unshift(circle);
+    saveCirclesToFile(circles);
+    return res.json({ success: true, circle: circles[idx !== -1 ? idx : 0] });
+  } catch (_e) {
+    return res.json({ success: true, circle });
+  }
 });
 
 app.post('/api/circles/sync', async (req, res) => {
@@ -619,11 +648,11 @@ app.post('/api/circles/join', async (req, res) => {
   const cleanUser = username.trim().toLowerCase();
   const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-  let circles = loadCirclesFromFile();
-  let circleIndex = circles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+  // PRIMARY: search Supabase user_metadata.created_circles (works on Vercel serverless)
+  let circles = [];
+  let circleIndex = -1;
 
-  // If not found in local file, look through Supabase users' created_circles
-  if (circleIndex === -1 && supabaseAdmin) {
+  if (supabaseAdmin) {
     try {
       const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
       if (!error && Array.isArray(users)) {
@@ -633,9 +662,8 @@ app.post('/api/circles/join', async (req, res) => {
             : [];
           const found = uCircles.find((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
           if (found) {
-            circles.unshift(found);
+            circles = [found];
             circleIndex = 0;
-            saveCirclesToFile(circles);
             break;
           }
         }
@@ -643,6 +671,18 @@ app.post('/api/circles/join', async (req, res) => {
     } catch (e) {
       console.warn('[Server] Could not search Supabase for circle:', e.message);
     }
+  }
+
+  // FALLBACK: local file (dev only)
+  if (circleIndex === -1) {
+    try {
+      const fileCircles = loadCirclesFromFile();
+      const idx = fileCircles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+      if (idx !== -1) {
+        circles = fileCircles;
+        circleIndex = idx;
+      }
+    } catch (_e) { /* no-op */ }
   }
 
   if (circleIndex === -1) {
@@ -914,6 +954,40 @@ app.use((req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
-app.listen(PORT, () => {
-  console.log(`C Compiler & Supabase Auth Server running on http://localhost:${PORT}`);
+/**
+ * POST /api/users/save-code
+ * Saves the user's code to their Supabase user_metadata.saved_code field.
+ * Falls back gracefully if Supabase is unavailable.
+ */
+app.post('/api/users/save-code', async (req, res) => {
+  const { email, code_text } = req.body || {};
+  if (!email || typeof email !== 'string') {
+    return res.status(400).json({ error: 'email is required' });
+  }
+  if (typeof code_text !== 'string') {
+    return res.status(400).json({ error: 'code_text is required' });
+  }
+  if (!supabaseAdmin) {
+    return res.status(503).json({ error: 'Supabase admin not available' });
+  }
+  try {
+    const user = await findSupabaseUser(email.trim().toLowerCase());
+    if (!user || !user.id) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    await supabaseAdmin.auth.admin.updateUserById(user.id, {
+      user_metadata: { ...user.user_metadata, saved_code: code_text },
+    });
+    return res.json({ success: true });
+  } catch (err) {
+    return res.status(500).json({ error: err.message });
+  }
 });
+
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`C Compiler & Supabase Auth Server running on http://localhost:${PORT}`);
+  });
+}
+
+export default app;
