@@ -141,6 +141,26 @@ export default function LandingPage({ onGetStarted, currentUser, onNavigate, onS
               {hasGroupNotifications && <span className="landing-badge-dot" />}
             </button>
 
+            {/* Top-Level Battle Field Action */}
+            <button
+              type="button"
+              className="landing-nav-item landing-group-challenge-btn"
+              onClick={() => (onNavigate ? onNavigate('battle-zone') : null)}
+              title="Battle Field live split-screen code battles"
+            >
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ verticalAlign: 'middle', marginRight: '6px' }}>
+                <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
+                <path d="M13 19l6-6" />
+                <path d="M16 16l4 4" />
+                <path d="M19 21l2-2" />
+                <path d="M9.5 6.5L21 18v3h-3L6.5 9.5" />
+                <path d="M5 8l6-6" />
+                <path d="M8 5l-4-4" />
+                <path d="M2 5l2-2" />
+              </svg>
+              <span>Battle Field</span>
+            </button>
+
             {isLoggedIn ? (
               <>
                 <button
@@ -155,10 +175,10 @@ export default function LandingPage({ onGetStarted, currentUser, onNavigate, onS
                   </svg>
                 </button>
 
+                {/* Authenticated User Profile Badge (Display only - non-clickable) */}
                 <div
                   className="landing-user-badge"
-                  onClick={() => (onNavigate ? onNavigate('dashboard') : onGetStarted())}
-                  title="View your dashboard & profile"
+                  aria-label={`Logged in as ${profile?.fullName || currentUser?.name || 'User'}`}
                 >
                   <span className="landing-user-name">{profile?.fullName || currentUser?.name || 'My Account'}</span>
                 </div>

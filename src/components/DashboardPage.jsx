@@ -572,6 +572,33 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
             )}
           </button>
 
+          <button
+            type="button"
+            className="spherical-btn spherical-btn-sm"
+            onClick={() => onNavigate && onNavigate('battle-zone')}
+            title="Open Battle Field"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              position: 'relative',
+              padding: '6px 14px',
+              fontWeight: 600,
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
+              <path d="M13 19l6-6" />
+              <path d="M16 16l4 4" />
+              <path d="M19 21l2-2" />
+              <path d="M9.5 6.5L21 18v3h-3L6.5 9.5" />
+              <path d="M5 8l6-6" />
+              <path d="M8 5l-4-4" />
+              <path d="M2 5l2-2" />
+            </svg>
+            <span>Battle Field</span>
+          </button>
+
           {/* Authenticated User Profile Pill (Display only - non-clickable) */}
           <div
             className="dash-user-pill"
@@ -632,6 +659,25 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                 </svg>
                 <span>Friend Circle</span>
                 {hasGroupNotifications && <span className="sidebar-badge-dot" />}
+              </button>
+
+              <button
+                type="button"
+                className="sidebar-nav-btn"
+                onClick={() => (onNavigate ? onNavigate('battle-zone') : null)}
+                title="Open Battle Field"
+              >
+                <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
+                  <path d="M13 19l6-6" />
+                  <path d="M16 16l4 4" />
+                  <path d="M19 21l2-2" />
+                  <path d="M9.5 6.5L21 18v3h-3L6.5 9.5" />
+                  <path d="M5 8l6-6" />
+                  <path d="M8 5l-4-4" />
+                  <path d="M2 5l2-2" />
+                </svg>
+                <span>Battle Field</span>
               </button>
 
               <button

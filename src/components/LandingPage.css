@@ -249,7 +249,7 @@
   box-shadow: 0 0 6px #ef4444;
 }
 
-/* Authenticated User Pill on Landing Page */
+/* Authenticated User Pill on Landing Page (Display only - non-clickable) */
 .landing-user-badge {
   display: inline-flex;
   align-items: center;
@@ -258,16 +258,11 @@
   background: rgba(43, 27, 24, 0.75);
   border: 1.5px solid rgba(225, 175, 155, 0.35);
   border-radius: 9999px;
-  cursor: pointer;
+  cursor: default;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   transition: all 0.25s ease;
   user-select: none;
-}
-
-.landing-user-badge:hover {
-  background: rgba(60, 36, 32, 0.85);
-  border-color: rgba(255, 255, 255, 0.5);
-  transform: translateY(-1px);
+  pointer-events: none;
 }
 
 .landing-user-avatar,

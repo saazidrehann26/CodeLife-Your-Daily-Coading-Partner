@@ -28,6 +28,7 @@ const VALID_PAGES = [
   'dashboard',
   'group-challenge',
   'battle-zone',
+  'battle-field',
 ];
 
 /**
@@ -36,9 +37,9 @@ const VALID_PAGES = [
 const getBattleIdFromUrl = () => {
   if (typeof window === 'undefined') return null;
   const hash = window.location.hash.replace(/^#\/?/, '').trim();
-  const hashMatch = hash.match(/^battle-zone\/([^/?#]+)/i);
+  const hashMatch = hash.match(/^(?:battle-zone|battle-field)\/([^/?#]+)/i);
   if (hashMatch) return hashMatch[1];
-  const pathMatch = (window.location.pathname || '').match(/^\/battle-zone\/([^/?#]+)/i);
+  const pathMatch = (window.location.pathname || '').match(/^\/(?:battle-zone|battle-field)\/([^/?#]+)/i);
   if (pathMatch) return pathMatch[1];
   try {
     const searchParams = new URLSearchParams(window.location.search);
@@ -80,7 +81,10 @@ const getPageFromHash = () => {
   if (pathname === 'group-challenge' || pathname.startsWith('group-challenge/')) {
     return 'group-challenge';
   }
-  if (pathname === 'battle-zone' || pathname.startsWith('battle-zone/')) {
+  if (
+    pathname === 'battle-zone' || pathname.startsWith('battle-zone/') ||
+    pathname === 'battle-field' || pathname.startsWith('battle-field/')
+  ) {
     return 'battle-zone';
   }
 
@@ -93,7 +97,10 @@ const getPageFromHash = () => {
     if (directHash === 'group-challenge' || directHash.startsWith('group-challenge/') || directHash.startsWith('group-challenge-')) {
       return 'group-challenge';
     }
-    if (directHash === 'battle-zone' || directHash.startsWith('battle-zone/') || directHash.startsWith('battle-zone-')) {
+    if (
+      directHash === 'battle-zone' || directHash.startsWith('battle-zone/') || directHash.startsWith('battle-zone-') ||
+      directHash === 'battle-field' || directHash.startsWith('battle-field/') || directHash.startsWith('battle-field-')
+    ) {
       return 'battle-zone';
     }
     if (window.location.hash && window.location.hash !== '#landing') {
@@ -108,7 +115,10 @@ const getPageFromHash = () => {
     return 'group-challenge';
   }
 
-  if (hash === 'battle-zone' || hash.startsWith('battle-zone/') || hash.startsWith('battle-zone-') || hash.startsWith('battle-zone?')) {
+  if (
+    hash === 'battle-zone' || hash.startsWith('battle-zone/') || hash.startsWith('battle-zone-') || hash.startsWith('battle-zone?') ||
+    hash === 'battle-field' || hash.startsWith('battle-field/') || hash.startsWith('battle-field-') || hash.startsWith('battle-field?')
+  ) {
     return 'battle-zone';
   }
   
@@ -151,11 +161,11 @@ export default function App() {
     let targetPage = page;
     let targetBattleId = extraBattleId;
 
-    if (page.startsWith('battle-zone/')) {
+    if (page.startsWith('battle-zone/') || page.startsWith('battle-field/')) {
       const parts = page.split('/');
       targetPage = 'battle-zone';
       targetBattleId = parts[1];
-    } else if (page.startsWith('battle-zone?')) {
+    } else if (page.startsWith('battle-zone?') || page.startsWith('battle-field?') || page === 'battle-field') {
       targetPage = 'battle-zone';
     }
 

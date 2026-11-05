@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import Editor from '@monaco-editor/react';
 import {
+  getAllBattles,
   getBattleById,
   saveBattle,
   updateBattleSettings,
@@ -93,7 +94,25 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
 
   // Initial Data Fetch
   const fetchBattleState = useCallback(async () => {
-    if (!battleId) return;
+    if (!battleId) {
+      try {
+        const allBattles = getAllBattles();
+        const activeMatch = allBattles.find((b) => {
+          if (b.status === 'finished') return false;
+          const inA = b.teams?.teamA?.members?.some((m) => (m.username || '').toLowerCase() === cleanUsername);
+          const inB = b.teams?.teamB?.members?.some((m) => (m.username || '').toLowerCase() === cleanUsername);
+          return inA || inB;
+        });
+        if (activeMatch) {
+          setBattle(getSanitizedBattleForUser(activeMatch, cleanUsername));
+        }
+      } catch {
+        // ignore
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     try {
       // 1. Try local service first
       let localBattle = getBattleById(battleId);
@@ -517,14 +536,103 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
     );
   }
 
-  if (error || !battle) {
+  if (error) {
     return (
       <div className="bz-error-screen">
-        <h2 className="bz-error-title">Battle Arena Not Found</h2>
-        <p className="bz-error-desc">{error || 'This battle does not exist or has expired.'}</p>
+        <h2 className="bz-error-title">Battle Arena Error</h2>
+        <p className="bz-error-desc">{error}</p>
         <button type="button" className="bz-action-btn" onClick={() => onNavigate('group-challenge')}>
           ← Return to Friend Circles
         </button>
+      </div>
+    );
+  }
+
+  if (!battle) {
+    const allMatches = getAllBattles();
+    const userMatches = allMatches.filter((b) => {
+      const inA = b.teams?.teamA?.members?.some((m) => (m.username || '').toLowerCase() === cleanUsername);
+      const inB = b.teams?.teamB?.members?.some((m) => (m.username || '').toLowerCase() === cleanUsername);
+      return inA || inB;
+    });
+
+    return (
+      <div className="bz-hub-screen">
+        <div className="bz-hub-card">
+          <div className="bz-hub-badge">⚔️ LIVE COMPETITIVE ARENA</div>
+          <h1 className="bz-hub-title">Battle Field</h1>
+          <p className="bz-hub-subtitle">
+            Live split-screen code battles between circles and teams. Author custom challenges,
+            swap problem sets with your opponent, and race the clock to compile passing solutions!
+          </p>
+
+          <div className="bz-hub-features-grid">
+            <div className="bz-hub-feat">
+              <span className="bz-feat-icon">⚔️</span>
+              <h4>Circle vs Circle</h4>
+              <p>Challenge any rival circle to a head-to-head live programming duel.</p>
+            </div>
+            <div className="bz-hub-feat">
+              <span className="bz-feat-icon">👥</span>
+              <h4>In-Circle Teams</h4>
+              <p>Divide circle members into Team A and Team B with designated captains.</p>
+            </div>
+            <div className="bz-hub-feat">
+              <span className="bz-feat-icon">⚡</span>
+              <h4>50/50 Split Screen</h4>
+              <p>Real-time collaboration, live Monaco compiler, and synchronized timer.</p>
+            </div>
+            <div className="bz-hub-feat">
+              <span className="bz-feat-icon">🛡️</span>
+              <h4>Fair-Play Sandboxed Judge</h4>
+              <p>Opponent code stays hidden; automatic server verification of test cases.</p>
+            </div>
+          </div>
+
+          <div className="bz-hub-actions-row">
+            <button
+              type="button"
+              className="bz-action-btn bz-btn-primary"
+              onClick={() => onNavigate('group-challenge')}
+            >
+              ⚔️ Open Friend Circle to Challenge
+            </button>
+            <button
+              type="button"
+              className="bz-action-btn"
+              onClick={() => onNavigate('dashboard')}
+            >
+              ← Back to Dashboard
+            </button>
+          </div>
+
+          {userMatches.length > 0 && (
+            <div className="bz-hub-recent-section">
+              <h3 className="bz-hub-recent-title">Your Recent Battles</h3>
+              <div className="bz-hub-recent-list">
+                {userMatches.slice(0, 5).map((m) => (
+                  <div key={m.id} className="bz-hub-recent-item">
+                    <div className="bz-recent-info">
+                      <span className="bz-recent-names">
+                        {m.teams?.teamA?.name || 'Team A'} vs {m.teams?.teamB?.name || 'Team B'}
+                      </span>
+                      <span className="bz-recent-meta">
+                        {m.language} • {m.format === 'circle_vs_circle' ? 'Circle Duel' : 'In-Circle'} • Status: {m.status.toUpperCase()}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      className="bz-action-btn bz-action-sm"
+                      onClick={() => onNavigate(`battle-zone/${m.id}`)}
+                    >
+                      {m.status === 'finished' ? 'View Results' : 'Re-enter Arena'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     );
   }
