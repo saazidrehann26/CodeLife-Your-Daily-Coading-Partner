@@ -93,15 +93,19 @@ function backendApiPlugin() {
       const findUserInSupabase = async (identifier) => {
         if (!supabaseAdmin || !identifier) return null;
         const clean = identifier.trim().toLowerCase();
-        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-        if (error || !Array.isArray(users)) return null;
-        return (
-          users.find(
-            (u) =>
-              u.email?.toLowerCase() === clean ||
-              u.user_metadata?.username?.toLowerCase() === clean
-          ) || null
-        );
+        try {
+          const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+          if (error || !Array.isArray(users)) return null;
+          return (
+            users.find(
+              (u) =>
+                u.email?.toLowerCase() === clean ||
+                u.user_metadata?.username?.toLowerCase() === clean
+            ) || null
+          );
+        } catch {
+          return null;
+        }
       };
 
       // Main API middleware interceptor
@@ -114,8 +118,8 @@ function backendApiPlugin() {
           pathname = pathname.replace('/CodeLife-Your-Daily-Coading-Partner', '');
         }
 
-        // Only handle /api paths
-        if (!pathname.startsWith('/api/')) {
+        // Only handle /api paths (handles /api/circles, /api/invites, /api/compile, etc.)
+        if (!pathname.startsWith('/api')) {
           return next();
         }
 
@@ -256,7 +260,7 @@ function backendApiPlugin() {
               username: u.user_metadata?.username || '',
               institution: u.user_metadata?.institution || '',
               trustedDevices: Array.isArray(u.user_metadata?.trustedDevices)
-                ? user_metadata.trustedDevices
+                ? u.user_metadata.trustedDevices
                 : [],
             }));
             return res.end(JSON.stringify({ users: sanitized }));
@@ -402,6 +406,27 @@ function backendApiPlugin() {
               circles.unshift(circle);
             }
             saveCirclesToFile(circles);
+
+            // Also backup to Supabase user_metadata if available
+            if (supabaseAdmin && circle.adminUsername) {
+              try {
+                const adminUser = await findUserInSupabase(circle.adminUsername);
+                if (adminUser && adminUser.id) {
+                  const currentCircles = Array.isArray(adminUser.user_metadata?.created_circles)
+                    ? adminUser.user_metadata.created_circles
+                    : [];
+                  const cIdx = currentCircles.findIndex((c) => c.id === circle.id);
+                  if (cIdx !== -1) currentCircles[cIdx] = circle;
+                  else currentCircles.unshift(circle);
+                  await supabaseAdmin.auth.admin.updateUserById(adminUser.id, {
+                    user_metadata: { ...adminUser.user_metadata, created_circles: currentCircles },
+                  });
+                }
+              } catch (e) {
+                console.warn('[Vite API] Could not backup circle to Supabase:', e.message);
+              }
+            }
+
             return res.end(JSON.stringify({ success: true, circle: circles[idx !== -1 ? idx : 0] }));
           }
 
@@ -413,6 +438,27 @@ function backendApiPlugin() {
 
             for (const c of serverCircles) {
               if (c && c.id) circleMap.set(c.id, c);
+            }
+
+            // Also merge circles from Supabase users' created_circles
+            if (supabaseAdmin) {
+              try {
+                const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+                if (!error && Array.isArray(users)) {
+                  for (const u of users) {
+                    const uCircles = Array.isArray(u.user_metadata?.created_circles)
+                      ? u.user_metadata.created_circles
+                      : [];
+                    for (const uc of uCircles) {
+                      if (uc && uc.id && !circleMap.has(uc.id)) {
+                        circleMap.set(uc.id, uc);
+                      }
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn('[Vite API] Could not load Supabase circles for sync:', e.message);
+              }
             }
 
             for (const inc of incoming) {
@@ -454,8 +500,31 @@ function backendApiPlugin() {
             const cleanUser = username.trim().toLowerCase();
             const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-            const circles = loadCirclesFromFile();
-            const circleIndex = circles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+            let circles = loadCirclesFromFile();
+            let circleIndex = circles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+
+            // If not found in local file, look through Supabase users' created_circles
+            if (circleIndex === -1 && supabaseAdmin) {
+              try {
+                const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+                if (!error && Array.isArray(users)) {
+                  for (const u of users) {
+                    const uCircles = Array.isArray(u.user_metadata?.created_circles)
+                      ? u.user_metadata.created_circles
+                      : [];
+                    const found = uCircles.find((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+                    if (found) {
+                      circles.unshift(found);
+                      circleIndex = 0;
+                      saveCirclesToFile(circles);
+                      break;
+                    }
+                  }
+                }
+              } catch (e) {
+                console.warn('[Vite API] Could not search Supabase for circle:', e.message);
+              }
+            }
 
             if (circleIndex === -1) {
               res.statusCode = 404;
@@ -496,6 +565,35 @@ function backendApiPlugin() {
             );
             saveInvitesToFile(invites);
 
+            // Also update Supabase for both the member and creator
+            if (supabaseAdmin) {
+              try {
+                const adminUser = await findUserInSupabase(circle.adminUsername);
+                if (adminUser && adminUser.id) {
+                  const currentCircles = Array.isArray(adminUser.user_metadata?.created_circles)
+                    ? adminUser.user_metadata.created_circles
+                    : [];
+                  const cIdx = currentCircles.findIndex((c) => c.id === circle.id);
+                  if (cIdx !== -1) currentCircles[cIdx] = updatedCircle;
+                  else currentCircles.unshift(updatedCircle);
+                  await supabaseAdmin.auth.admin.updateUserById(adminUser.id, {
+                    user_metadata: { ...adminUser.user_metadata, created_circles: currentCircles },
+                  });
+                }
+                const joiningUser = await findUserInSupabase(cleanUser);
+                if (joiningUser && joiningUser.id) {
+                  const pendingInvites = Array.isArray(joiningUser.user_metadata?.pending_invites)
+                    ? joiningUser.user_metadata.pending_invites.filter((inv) => inv.circleId !== circle.id)
+                    : [];
+                  await supabaseAdmin.auth.admin.updateUserById(joiningUser.id, {
+                    user_metadata: { ...joiningUser.user_metadata, pending_invites: pendingInvites },
+                  });
+                }
+              } catch (e) {
+                console.warn('[Vite API] Could not sync join to Supabase:', e.message);
+              }
+            }
+
             return res.end(JSON.stringify({ success: true, circle: updatedCircle }));
           }
 
@@ -505,9 +603,29 @@ function backendApiPlugin() {
           if (pathname.startsWith('/api/invites/') && pathname !== '/api/invites/respond' && req.method === 'GET') {
             const clean = pathname.replace('/api/invites/', '').trim().toLowerCase();
             const allInvites = loadInvitesFromFile();
-            const userInvites = allInvites.filter(
-              (inv) => (inv.targetUsername || '').toLowerCase() === clean && inv.status === 'pending'
+            let userInvites = allInvites.filter(
+              (inv) =>
+                ((inv.targetUsername || '').toLowerCase() === clean ||
+                 (inv.targetEmail || '').toLowerCase() === clean) &&
+                inv.status === 'pending'
             );
+
+            // Also check Supabase user_metadata.pending_invites
+            if (supabaseAdmin) {
+              try {
+                const user = await findUserInSupabase(clean);
+                if (user && Array.isArray(user.user_metadata?.pending_invites)) {
+                  const sbInvites = user.user_metadata.pending_invites.filter((inv) => inv.status === 'pending');
+                  const map = new Map();
+                  for (const inv of userInvites) map.set(inv.id, inv);
+                  for (const inv of sbInvites) map.set(inv.id, inv);
+                  userInvites = Array.from(map.values());
+                }
+              } catch (e) {
+                console.warn('[Vite API] Could not read Supabase pending invites:', e.message);
+              }
+            }
+
             return res.end(JSON.stringify({ success: true, invites: userInvites }));
           }
 
@@ -517,17 +635,63 @@ function backendApiPlugin() {
               res.statusCode = 400;
               return res.end(JSON.stringify({ error: 'Valid invite payload required' }));
             }
+
+            let resolvedUsername = invite.targetUsername.trim().toLowerCase();
+            let resolvedEmail = invite.targetEmail || '';
+
+            // Resolve target user via Supabase if possible (handles email -> username lookup)
+            if (supabaseAdmin) {
+              try {
+                const targetUser = await findUserInSupabase(invite.targetUsername);
+                if (targetUser) {
+                  resolvedUsername = targetUser.user_metadata?.username?.toLowerCase() || resolvedUsername;
+                  resolvedEmail = targetUser.email?.toLowerCase() || resolvedEmail;
+
+                  // Save pending invite into target user's Supabase metadata directly
+                  const currentInvites = Array.isArray(targetUser.user_metadata?.pending_invites)
+                    ? targetUser.user_metadata.pending_invites
+                    : [];
+                  const idx = currentInvites.findIndex(
+                    (i) => i.id === invite.id || i.circleId === invite.circleId
+                  );
+                  const normalizedInvite = {
+                    ...invite,
+                    targetUsername: resolvedUsername,
+                    targetEmail: resolvedEmail,
+                  };
+                  if (idx !== -1) currentInvites[idx] = normalizedInvite;
+                  else currentInvites.unshift(normalizedInvite);
+
+                  await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+                    user_metadata: { ...targetUser.user_metadata, pending_invites: currentInvites },
+                  });
+                }
+              } catch (e) {
+                console.warn('[Vite API] Could not sync invite to Supabase:', e.message);
+              }
+            }
+
+            const normalizedInvite = {
+              ...invite,
+              targetUsername: resolvedUsername,
+              targetEmail: resolvedEmail,
+            };
+
             const allInvites = loadInvitesFromFile();
             const existingIdx = allInvites.findIndex(
-              (i) => i.id === invite.id || (i.circleId === invite.circleId && (i.targetUsername || '').toLowerCase() === (invite.targetUsername || '').toLowerCase())
+              (i) =>
+                i.id === normalizedInvite.id ||
+                (i.circleId === normalizedInvite.circleId &&
+                 ((i.targetUsername || '').toLowerCase() === resolvedUsername ||
+                  (i.targetEmail && i.targetEmail.toLowerCase() === resolvedEmail)))
             );
             if (existingIdx !== -1) {
-              allInvites[existingIdx] = invite;
+              allInvites[existingIdx] = normalizedInvite;
             } else {
-              allInvites.unshift(invite);
+              allInvites.unshift(normalizedInvite);
             }
             saveInvitesToFile(allInvites);
-            return res.end(JSON.stringify({ success: true, invite }));
+            return res.end(JSON.stringify({ success: true, invite: normalizedInvite }));
           }
 
           if (pathname === '/api/invites/respond' && req.method === 'POST') {
@@ -541,6 +705,21 @@ function backendApiPlugin() {
             const invite = allInvites.find((i) => i.id === inviteId);
             const remaining = allInvites.filter((i) => i.id !== inviteId);
             saveInvitesToFile(remaining);
+
+            // Clean invite in Supabase
+            if (supabaseAdmin) {
+              try {
+                const user = await findUserInSupabase(cleanUser);
+                if (user && Array.isArray(user.user_metadata?.pending_invites)) {
+                  const sbRemaining = user.user_metadata.pending_invites.filter((i) => i.id !== inviteId);
+                  await supabaseAdmin.auth.admin.updateUserById(user.id, {
+                    user_metadata: { ...user.user_metadata, pending_invites: sbRemaining },
+                  });
+                }
+              } catch (e) {
+                console.warn('[Vite API] Could not clean Supabase invite:', e.message);
+              }
+            }
 
             if (accept && invite) {
               const circles = loadCirclesFromFile();

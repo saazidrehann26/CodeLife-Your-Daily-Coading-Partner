@@ -514,7 +514,7 @@ app.get('/api/circles', (req, res) => {
   return res.json({ success: true, circles });
 });
 
-app.post('/api/circles', (req, res) => {
+app.post('/api/circles', async (req, res) => {
   const circle = req.body;
   if (!circle || !circle.id || !circle.name) {
     return res.status(400).json({ error: 'Valid circle object required' });
@@ -527,16 +527,58 @@ app.post('/api/circles', (req, res) => {
     circles.unshift(circle);
   }
   saveCirclesToFile(circles);
+
+  // Backup to Supabase
+  if (supabaseAdmin && circle.adminUsername) {
+    try {
+      const adminUser = await findSupabaseUser(circle.adminUsername);
+      if (adminUser && adminUser.id) {
+        const currentCircles = Array.isArray(adminUser.user_metadata?.created_circles)
+          ? adminUser.user_metadata.created_circles
+          : [];
+        const cIdx = currentCircles.findIndex((c) => c.id === circle.id);
+        if (cIdx !== -1) currentCircles[cIdx] = circle;
+        else currentCircles.unshift(circle);
+        await supabaseAdmin.auth.admin.updateUserById(adminUser.id, {
+          user_metadata: { ...adminUser.user_metadata, created_circles: currentCircles },
+        });
+      }
+    } catch (e) {
+      console.warn('[Server] Could not backup circle to Supabase:', e.message);
+    }
+  }
+
   return res.json({ success: true, circle: circles[idx !== -1 ? idx : 0] });
 });
 
-app.post('/api/circles/sync', (req, res) => {
+app.post('/api/circles/sync', async (req, res) => {
   const incoming = Array.isArray(req.body?.circles) ? req.body.circles : [];
   const serverCircles = loadCirclesFromFile();
   const circleMap = new Map();
 
   for (const c of serverCircles) {
     if (c && c.id) circleMap.set(c.id, c);
+  }
+
+  // Also merge circles from Supabase users' created_circles
+  if (supabaseAdmin) {
+    try {
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (!error && Array.isArray(users)) {
+        for (const u of users) {
+          const uCircles = Array.isArray(u.user_metadata?.created_circles)
+            ? u.user_metadata.created_circles
+            : [];
+          for (const uc of uCircles) {
+            if (uc && uc.id && !circleMap.has(uc.id)) {
+              circleMap.set(uc.id, uc);
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Server] Could not load Supabase circles for sync:', e.message);
+    }
   }
 
   for (const inc of incoming) {
@@ -569,23 +611,46 @@ app.post('/api/circles/sync', (req, res) => {
   return res.json({ success: true, circles: merged });
 });
 
-app.post('/api/circles/join', (req, res) => {
+app.post('/api/circles/join', async (req, res) => {
   const { username, inviteCode } = req.body || {};
   if (!username || !inviteCode) {
     return res.status(400).json({ success: false, error: 'Username and invite code are required.' });
   }
   const cleanUser = username.trim().toLowerCase();
-  const cleanCode = inviteCode.trim().toUpperCase();
+  const cleanCode = inviteCode.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
 
-  const circles = loadCirclesFromFile();
-  const circleIndex = circles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+  let circles = loadCirclesFromFile();
+  let circleIndex = circles.findIndex((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+
+  // If not found in local file, look through Supabase users' created_circles
+  if (circleIndex === -1 && supabaseAdmin) {
+    try {
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (!error && Array.isArray(users)) {
+        for (const u of users) {
+          const uCircles = Array.isArray(u.user_metadata?.created_circles)
+            ? u.user_metadata.created_circles
+            : [];
+          const found = uCircles.find((c) => (c.inviteCode || '').toUpperCase() === cleanCode);
+          if (found) {
+            circles.unshift(found);
+            circleIndex = 0;
+            saveCirclesToFile(circles);
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Server] Could not search Supabase for circle:', e.message);
+    }
+  }
 
   if (circleIndex === -1) {
     return res.status(404).json({ success: false, error: 'Circle not found. Please verify the 6-character invite code.' });
   }
 
   const circle = circles[circleIndex];
-  const members = circle.members || [];
+  const members = Array.isArray(circle.members) ? circle.members : [];
 
   if (members.some((m) => (m.username || '').toLowerCase() === cleanUser)) {
     return res.json({ success: true, circle, message: 'Already a member' });
@@ -617,37 +682,131 @@ app.post('/api/circles/join', (req, res) => {
   );
   saveInvitesToFile(invites);
 
+  // Also update Supabase for both the member and creator
+  if (supabaseAdmin) {
+    try {
+      const adminUser = await findSupabaseUser(circle.adminUsername);
+      if (adminUser && adminUser.id) {
+        const currentCircles = Array.isArray(adminUser.user_metadata?.created_circles)
+          ? adminUser.user_metadata.created_circles
+          : [];
+        const cIdx = currentCircles.findIndex((c) => c.id === circle.id);
+        if (cIdx !== -1) currentCircles[cIdx] = updatedCircle;
+        else currentCircles.unshift(updatedCircle);
+        await supabaseAdmin.auth.admin.updateUserById(adminUser.id, {
+          user_metadata: { ...adminUser.user_metadata, created_circles: currentCircles },
+        });
+      }
+      const joiningUser = await findSupabaseUser(cleanUser);
+      if (joiningUser && joiningUser.id) {
+        const pendingInvites = Array.isArray(joiningUser.user_metadata?.pending_invites)
+          ? joiningUser.user_metadata.pending_invites.filter((inv) => inv.circleId !== circle.id)
+          : [];
+        await supabaseAdmin.auth.admin.updateUserById(joiningUser.id, {
+          user_metadata: { ...joiningUser.user_metadata, pending_invites: pendingInvites },
+        });
+      }
+    } catch (e) {
+      console.warn('[Server] Could not sync join to Supabase:', e.message);
+    }
+  }
+
   return res.json({ success: true, circle: updatedCircle });
 });
 
-app.get('/api/invites/:username', (req, res) => {
+app.get('/api/invites/:username', async (req, res) => {
   const clean = (req.params.username || '').trim().toLowerCase();
   const allInvites = loadInvitesFromFile();
-  const userInvites = allInvites.filter(
-    (inv) => (inv.targetUsername || '').toLowerCase() === clean && inv.status === 'pending'
+  let userInvites = allInvites.filter(
+    (inv) =>
+      ((inv.targetUsername || '').toLowerCase() === clean ||
+       (inv.targetEmail || '').toLowerCase() === clean) &&
+      inv.status === 'pending'
   );
+
+  // Also check Supabase user_metadata.pending_invites
+  if (supabaseAdmin) {
+    try {
+      const user = await findSupabaseUser(clean);
+      if (user && Array.isArray(user.user_metadata?.pending_invites)) {
+        const sbInvites = user.user_metadata.pending_invites.filter((inv) => inv.status === 'pending');
+        const map = new Map();
+        for (const inv of userInvites) map.set(inv.id, inv);
+        for (const inv of sbInvites) map.set(inv.id, inv);
+        userInvites = Array.from(map.values());
+      }
+    } catch (e) {
+      console.warn('[Server] Could not read Supabase pending invites:', e.message);
+    }
+  }
+
   return res.json({ success: true, invites: userInvites });
 });
 
-app.post('/api/invites', (req, res) => {
+app.post('/api/invites', async (req, res) => {
   const invite = req.body;
   if (!invite || !invite.circleId || !invite.targetUsername) {
     return res.status(400).json({ error: 'Valid invite payload required' });
   }
+
+  let resolvedUsername = invite.targetUsername.trim().toLowerCase();
+  let resolvedEmail = invite.targetEmail || '';
+
+  // Resolve target user via Supabase if possible
+  if (supabaseAdmin) {
+    try {
+      const targetUser = await findSupabaseUser(invite.targetUsername);
+      if (targetUser) {
+        resolvedUsername = targetUser.user_metadata?.username?.toLowerCase() || resolvedUsername;
+        resolvedEmail = targetUser.email?.toLowerCase() || resolvedEmail;
+
+        const currentInvites = Array.isArray(targetUser.user_metadata?.pending_invites)
+          ? targetUser.user_metadata.pending_invites
+          : [];
+        const idx = currentInvites.findIndex(
+          (i) => i.id === invite.id || i.circleId === invite.circleId
+        );
+        const normalizedInvite = {
+          ...invite,
+          targetUsername: resolvedUsername,
+          targetEmail: resolvedEmail,
+        };
+        if (idx !== -1) currentInvites[idx] = normalizedInvite;
+        else currentInvites.unshift(normalizedInvite);
+
+        await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+          user_metadata: { ...targetUser.user_metadata, pending_invites: currentInvites },
+        });
+      }
+    } catch (e) {
+      console.warn('[Server] Could not sync invite to Supabase:', e.message);
+    }
+  }
+
+  const normalizedInvite = {
+    ...invite,
+    targetUsername: resolvedUsername,
+    targetEmail: resolvedEmail,
+  };
+
   const allInvites = loadInvitesFromFile();
   const existingIdx = allInvites.findIndex(
-    (i) => i.id === invite.id || (i.circleId === invite.circleId && (i.targetUsername || '').toLowerCase() === (invite.targetUsername || '').toLowerCase())
+    (i) =>
+      i.id === normalizedInvite.id ||
+      (i.circleId === normalizedInvite.circleId &&
+       ((i.targetUsername || '').toLowerCase() === resolvedUsername ||
+        (i.targetEmail && i.targetEmail.toLowerCase() === resolvedEmail)))
   );
   if (existingIdx !== -1) {
-    allInvites[existingIdx] = invite;
+    allInvites[existingIdx] = normalizedInvite;
   } else {
-    allInvites.unshift(invite);
+    allInvites.unshift(normalizedInvite);
   }
   saveInvitesToFile(allInvites);
-  return res.json({ success: true, invite });
+  return res.json({ success: true, invite: normalizedInvite });
 });
 
-app.post('/api/invites/respond', (req, res) => {
+app.post('/api/invites/respond', async (req, res) => {
   const { username, inviteId, accept } = req.body || {};
   if (!username || !inviteId) {
     return res.status(400).json({ error: 'Username and inviteId are required' });
@@ -658,12 +817,27 @@ app.post('/api/invites/respond', (req, res) => {
   const remaining = allInvites.filter((i) => i.id !== inviteId);
   saveInvitesToFile(remaining);
 
+  // Clean invite in Supabase
+  if (supabaseAdmin) {
+    try {
+      const user = await findSupabaseUser(cleanUser);
+      if (user && Array.isArray(user.user_metadata?.pending_invites)) {
+        const sbRemaining = user.user_metadata.pending_invites.filter((i) => i.id !== inviteId);
+        await supabaseAdmin.auth.admin.updateUserById(user.id, {
+          user_metadata: { ...user.user_metadata, pending_invites: sbRemaining },
+        });
+      }
+    } catch (e) {
+      console.warn('[Server] Could not clean Supabase invite:', e.message);
+    }
+  }
+
   if (accept && invite) {
     const circles = loadCirclesFromFile();
     const cIdx = circles.findIndex((c) => c.id === invite.circleId);
     if (cIdx !== -1) {
       const circle = circles[cIdx];
-      const members = circle.members || [];
+      const members = Array.isArray(circle.members) ? circle.members : [];
       if (!members.some((m) => (m.username || '').toLowerCase() === cleanUser)) {
         circles[cIdx] = {
           ...circle,

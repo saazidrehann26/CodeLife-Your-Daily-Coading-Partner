@@ -533,8 +533,42 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
           <span className="dash-brand-title">CodeLife</span>
         </div>
 
-        {/* Top Navbar Right Controls: User Profile Pill */}
-        <div className="dash-nav-links">
+        {/* Top Navbar Right Controls */}
+        <div className="dash-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <button
+            type="button"
+            className="spherical-btn spherical-btn-sm"
+            onClick={() => onNavigate && onNavigate('group-challenge')}
+            title="Open Group Challenge"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '6px',
+              position: 'relative',
+              padding: '6px 14px',
+              fontWeight: 600,
+            }}
+          >
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+              <circle cx="9" cy="7" r="4" />
+              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            </svg>
+            <span>Group Challenge</span>
+            {hasGroupNotifications && (
+              <span
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  background: '#ff5252',
+                  boxShadow: '0 0 8px #ff5252',
+                }}
+              />
+            )}
+          </button>
+
           {/* Authenticated User Profile Pill */}
           <div
             className="dash-user-pill"

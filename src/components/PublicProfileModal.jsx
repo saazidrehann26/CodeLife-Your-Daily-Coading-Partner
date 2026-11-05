@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   getPublicProfile,
   getUserCircles,
-  sendCircleInvite,
+  sendCircleInviteAsync,
   toggleBlockUser,
   saveUserPrivacySettings,
 } from '../services/groupChallengeService';
@@ -80,7 +80,7 @@ export default function PublicProfileModal({
     };
   }, [username, currentUser]);
 
-  const handleSendInvite = () => {
+  const handleSendInvite = async () => {
     if (!currentUser) {
       setInviteStatus({ type: 'error', message: 'Please sign in to invite users.' });
       return;
@@ -93,7 +93,7 @@ export default function PublicProfileModal({
     const circle = userCircles.find((c) => c.id === selectedCircleId);
     const circleName = circle ? circle.name : 'Friend Circle';
 
-    const res = sendCircleInvite(currentUser.username, profile.username, selectedCircleId, circleName);
+    const res = await sendCircleInviteAsync(currentUser.username, profile.username, selectedCircleId, circleName);
     if (res.success) {
       setInviteStatus({ type: 'success', message: `Invitation sent to @${profile.username}!` });
       if (onInviteSent) onInviteSent(res.invite);

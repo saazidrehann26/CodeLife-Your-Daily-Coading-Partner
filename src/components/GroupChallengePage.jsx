@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   getUserCircles,
   getPendingCircleInvites,
-  respondCircleInvite,
-  createCircle,
+  respondCircleInviteAsync,
+  createCircleAsync,
   joinCircleByCodeAsync,
   syncCirclesAndInvitesAsync,
-  sendCircleInvite,
+  sendCircleInviteAsync,
   searchUsers,
   getCircleMatchHistory,
 } from '../services/groupChallengeService';
@@ -152,18 +152,21 @@ export default function GroupChallengePage({
   };
 
   // Accept or decline invitation
-  const handleRespondInvite = (inviteId, accept) => {
+  const handleRespondInvite = async (inviteId, accept) => {
     if (!currentUser?.username) return;
-    respondCircleInvite(currentUser.username, inviteId, accept);
+    const res = await respondCircleInviteAsync(currentUser.username, inviteId, accept);
     setPendingInvites(getPendingCircleInvites(currentUser.username));
     setCircles(getUserCircles(currentUser.username));
+    if (accept && res?.circle?.id) {
+      setSelectedCircleId(res.circle.id);
+    }
   };
 
   // Create circle handler with optional friend invitations
-  const handleCreateCircleSubmit = (e) => {
+  const handleCreateCircleSubmit = async (e) => {
     e.preventDefault();
     if (!newCircleName.trim() || !currentUser?.username) return;
-    const created = createCircle(currentUser.username, newCircleName.trim());
+    const created = await createCircleAsync(currentUser.username, newCircleName.trim());
     if (created) {
       if (inviteFriendsInput.trim()) {
         const friendList = inviteFriendsInput
@@ -171,7 +174,7 @@ export default function GroupChallengePage({
           .map((f) => f.replace(/^@/, '').trim())
           .filter(Boolean);
         for (const friend of friendList) {
-          sendCircleInvite(currentUser.username, friend, created.id, created.name);
+          await sendCircleInviteAsync(currentUser.username, friend, created.id, created.name);
         }
       }
       setCircles(getUserCircles(currentUser.username));
@@ -189,7 +192,7 @@ export default function GroupChallengePage({
     if (!cleanCode || !currentUser?.username) return;
 
     const res = await joinCircleByCodeAsync(currentUser.username, cleanCode);
-    if (res.success && res.circle) {
+    if (res.circle) {
       setCircles(getUserCircles(currentUser.username));
       setPendingInvites(getPendingCircleInvites(currentUser.username));
       setShowJoinModal(false);
@@ -197,7 +200,7 @@ export default function GroupChallengePage({
       setJoinModalError(null);
       setSelectedCircleId(res.circle.id);
     } else {
-      setJoinModalError(res.error || 'Invalid or expired circle invite code.');
+      setJoinModalError(res.error || 'Circle not found. Please verify the 6-character invite code.');
     }
   };
 

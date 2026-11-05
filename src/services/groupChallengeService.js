@@ -401,6 +401,39 @@ export function createCircle(creatorUsername, circleName, maxMembers = DEFAULT_M
 }
 
 /**
+ * Create a new circle and await remote server / Supabase confirmation
+ */
+export async function createCircleAsync(creatorUsername, circleName, maxMembers = DEFAULT_MAX_CIRCLE_MEMBERS) {
+  const newCircle = createCircle(creatorUsername, circleName, maxMembers);
+  if (!newCircle) return null;
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    try {
+      const res = await fetch('/api/circles', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newCircle),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.circle) {
+          const all = getAllCircles();
+          const idx = all.findIndex((c) => c.id === data.circle.id);
+          if (idx !== -1) all[idx] = data.circle;
+          else all.unshift(data.circle);
+          saveAllCircles(all);
+          saveUserCircles(creatorUsername, getUserCircles(creatorUsername));
+          return data.circle;
+        }
+      }
+    } catch (e) {
+      console.warn('Could not sync created circle immediately:', e);
+    }
+  }
+  return newCircle;
+}
+
+/**
  * Rename a circle (Admin only)
  * @param {string} adminUsername 
  * @param {string} circleId 
@@ -508,6 +541,11 @@ export async function joinCircleByCodeAsync(username, inviteCode) {
   const localRes = joinCircleByCode(cleanUser, cleanCode);
   if (localRes.success) return localRes;
 
+  // If user is already a member locally, return the circle so caller navigates directly to it
+  if (localRes.circle) {
+    return { success: true, circle: localRes.circle, message: localRes.error || 'Already a member' };
+  }
+
   // If not found locally, query remote server
   if (typeof window !== 'undefined' && window.navigator?.onLine) {
     try {
@@ -517,7 +555,7 @@ export async function joinCircleByCodeAsync(username, inviteCode) {
         body: JSON.stringify({ username: cleanUser, inviteCode: cleanCode }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data.success && data.circle) {
+      if (res.ok && data.circle) {
         const all = getAllCircles();
         const idx = all.findIndex((c) => c.id === data.circle.id);
         if (idx !== -1) all[idx] = data.circle;
@@ -529,7 +567,7 @@ export async function joinCircleByCodeAsync(username, inviteCode) {
         const remainingInvites = userInvites.filter((inv) => inv.circleId !== data.circle.id);
         savePendingCircleInvites(cleanUser, remainingInvites);
 
-        return { success: true, circle: data.circle };
+        return { success: true, circle: data.circle, message: data.message };
       } else if (data.error) {
         return { success: false, error: data.error };
       }
@@ -745,7 +783,17 @@ export function savePendingCircleInvites(username, invites) {
  */
 export function sendCircleInvite(inviterUsername, targetUsername, circleId, circleName) {
   if (!inviterUsername || !targetUsername || !circleId) return { success: false, error: 'Invalid parameters' };
-  const targetClean = targetUsername.trim().toLowerCase();
+  let targetClean = targetUsername.trim().toLowerCase();
+
+  // If target looks like email, resolve against registered users
+  if (targetClean.includes('@')) {
+    const allUsers = getUsers();
+    const found = allUsers.find((u) => (u.email || '').toLowerCase() === targetClean);
+    if (found && found.username) {
+      targetClean = found.username.toLowerCase();
+    }
+  }
+
   const privacy = getUserPrivacySettings(targetClean);
 
   if (privacy.allowStrangerInvites === false) {
@@ -797,6 +845,31 @@ export function sendCircleInvite(inviterUsername, targetUsername, circleId, circ
   }
 
   return { success: true, invite: newInvite };
+}
+
+/**
+ * Send an invitation and await server confirmation
+ */
+export async function sendCircleInviteAsync(inviterUsername, targetUsername, circleId, circleName) {
+  const localRes = sendCircleInvite(inviterUsername, targetUsername, circleId, circleName);
+  if (localRes.invite && typeof window !== 'undefined' && window.navigator?.onLine) {
+    try {
+      const res = await fetch('/api/invites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(localRes.invite),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.invite) {
+          return { success: true, invite: data.invite };
+        }
+      }
+    } catch (e) {
+      console.warn('Could not sync invite immediately:', e);
+    }
+  }
+  return localRes;
 }
 
 /**
@@ -947,6 +1020,45 @@ export function respondCircleInvite(username, inviteId, accept = true) {
   }
 
   return true;
+}
+
+/**
+ * Respond to circle invite and await server confirmation
+ */
+export async function respondCircleInviteAsync(username, inviteId, accept = true) {
+  const cleanUser = username.trim().toLowerCase();
+  const invites = getPendingCircleInvites(cleanUser);
+  const targetInvite = invites.find((i) => i.id === inviteId);
+  const targetCircleId = targetInvite?.circleId;
+
+  const localOk = respondCircleInvite(username, inviteId, accept);
+  let circle = targetCircleId ? getCircleById(targetCircleId) : null;
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    try {
+      const res = await fetch('/api/invites/respond', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: cleanUser, inviteId, accept }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.circle) {
+          circle = data.circle;
+          const all = getAllCircles();
+          const idx = all.findIndex((c) => c.id === circle.id);
+          if (idx !== -1) all[idx] = circle;
+          else all.unshift(circle);
+          saveAllCircles(all);
+          saveUserCircles(cleanUser, getUserCircles(cleanUser));
+        }
+      }
+    } catch {
+      // Fallback to local
+    }
+  }
+
+  return { success: localOk, circle };
 }
 
 /**
