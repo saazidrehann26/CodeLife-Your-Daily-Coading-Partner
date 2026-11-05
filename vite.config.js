@@ -113,12 +113,7 @@ function backendApiPlugin() {
         const parsedUrl = new URL(req.url, 'http://localhost');
         let pathname = parsedUrl.pathname;
 
-        // Normalize base prefix if present
-        if (pathname.startsWith('/CodeLife-Your-Daily-Coading-Partner/api')) {
-          pathname = pathname.replace('/CodeLife-Your-Daily-Coading-Partner', '');
-        }
-
-        // Only handle /api paths (handles /api/circles, /api/invites, /api/compile, etc.)
+        // Only handle /api paths
         if (!pathname.startsWith('/api')) {
           return next();
         }
@@ -804,6 +799,6 @@ function backendApiPlugin() {
 
 // https://vite.dev/config/
 export default defineConfig({
-  base: process.env.VERCEL ? '/' : '/CodeLife-Your-Daily-Coading-Partner/',
+  base: '/',
   plugins: [react(), backendApiPlugin()],
 })
