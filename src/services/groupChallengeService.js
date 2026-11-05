@@ -516,24 +516,22 @@ export async function joinCircleByCodeAsync(username, inviteCode) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username: cleanUser, inviteCode: cleanCode }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.circle) {
-          const all = getAllCircles();
-          const idx = all.findIndex((c) => c.id === data.circle.id);
-          if (idx !== -1) all[idx] = data.circle;
-          else all.unshift(data.circle);
-          saveAllCircles(all);
-          saveUserCircles(cleanUser, getUserCircles(cleanUser));
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.success && data.circle) {
+        const all = getAllCircles();
+        const idx = all.findIndex((c) => c.id === data.circle.id);
+        if (idx !== -1) all[idx] = data.circle;
+        else all.unshift(data.circle);
+        saveAllCircles(all);
+        saveUserCircles(cleanUser, getUserCircles(cleanUser));
 
-          const userInvites = getPendingCircleInvites(cleanUser);
-          const remainingInvites = userInvites.filter((inv) => inv.circleId !== data.circle.id);
-          savePendingCircleInvites(cleanUser, remainingInvites);
+        const userInvites = getPendingCircleInvites(cleanUser);
+        const remainingInvites = userInvites.filter((inv) => inv.circleId !== data.circle.id);
+        savePendingCircleInvites(cleanUser, remainingInvites);
 
-          return { success: true, circle: data.circle };
-        } else if (data.error) {
-          return { success: false, error: data.error };
-        }
+        return { success: true, circle: data.circle };
+      } else if (data.error) {
+        return { success: false, error: data.error };
       }
     } catch {
       // Fall through to local error
@@ -549,20 +547,44 @@ export async function joinCircleByCodeAsync(username, inviteCode) {
 export async function syncCirclesAndInvitesAsync(username) {
   if (typeof window === 'undefined' || !window.navigator?.onLine) return;
   try {
-    const circlesRes = await fetch('/api/circles');
-    if (circlesRes.ok) {
-      const data = await circlesRes.json();
-      if (Array.isArray(data.circles) && data.circles.length > 0) {
-        const local = getAllCircles();
-        const map = new Map();
-        for (const c of local) map.set(c.id, c);
-        for (const c of data.circles) map.set(c.id, c);
-        saveAllCircles(Array.from(map.values()));
+    const local = getAllCircles();
+    let synced = false;
+
+    // 1. Two-way sync: push local circles to server and pull latest server circles
+    try {
+      const syncRes = await fetch('/api/circles/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ circles: local }),
+      });
+      if (syncRes.ok) {
+        const data = await syncRes.json();
+        if (Array.isArray(data.circles)) {
+          saveAllCircles(data.circles);
+          synced = true;
+        }
+      }
+    } catch {
+      // Fall through to standard GET
+    }
+
+    // 2. Fallback to GET /api/circles if sync endpoint didn't succeed
+    if (!synced) {
+      const circlesRes = await fetch('/api/circles');
+      if (circlesRes.ok) {
+        const data = await circlesRes.json();
+        if (Array.isArray(data.circles) && data.circles.length > 0) {
+          const map = new Map();
+          for (const c of local) map.set(c.id, c);
+          for (const c of data.circles) map.set(c.id, c);
+          saveAllCircles(Array.from(map.values()));
+        }
       }
     }
 
     if (username) {
       const clean = username.trim().toLowerCase();
+      saveUserCircles(clean, getUserCircles(clean));
       const invitesRes = await fetch(`/api/invites/${clean}`);
       if (invitesRes.ok) {
         const data = await invitesRes.json();

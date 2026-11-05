@@ -1,0 +1,18 @@
+[
+  {
+    "id": "circle_seed_4a4npu",
+    "name": "Coding Circle",
+    "adminUsername": "sazid",
+    "maxMembers": 50,
+    "status": "No active match",
+    "createdAt": "2026-11-05T07:00:00.000Z",
+    "inviteCode": "4A4NPU",
+    "members": [
+      {
+        "username": "sazid",
+        "role": "admin",
+        "joinedAt": "2026-11-05T07:00:00.000Z"
+      }
+    ]
+  }
+]

@@ -530,6 +530,45 @@ app.post('/api/circles', (req, res) => {
   return res.json({ success: true, circle: circles[idx !== -1 ? idx : 0] });
 });
 
+app.post('/api/circles/sync', (req, res) => {
+  const incoming = Array.isArray(req.body?.circles) ? req.body.circles : [];
+  const serverCircles = loadCirclesFromFile();
+  const circleMap = new Map();
+
+  for (const c of serverCircles) {
+    if (c && c.id) circleMap.set(c.id, c);
+  }
+
+  for (const inc of incoming) {
+    if (!inc || !inc.id) continue;
+    if (!circleMap.has(inc.id)) {
+      circleMap.set(inc.id, inc);
+    } else {
+      const existing = circleMap.get(inc.id);
+      const existingMembers = Array.isArray(existing.members) ? existing.members : [];
+      const incMembers = Array.isArray(inc.members) ? inc.members : [];
+      const memberMap = new Map();
+      for (const m of existingMembers) {
+        if (m?.username) memberMap.set(m.username.toLowerCase(), m);
+      }
+      for (const m of incMembers) {
+        if (m?.username && !memberMap.has(m.username.toLowerCase())) {
+          memberMap.set(m.username.toLowerCase(), m);
+        }
+      }
+      circleMap.set(inc.id, {
+        ...existing,
+        ...inc,
+        members: Array.from(memberMap.values()),
+      });
+    }
+  }
+
+  const merged = Array.from(circleMap.values());
+  saveCirclesToFile(merged);
+  return res.json({ success: true, circles: merged });
+});
+
 app.post('/api/circles/join', (req, res) => {
   const { username, inviteCode } = req.body || {};
   if (!username || !inviteCode) {
