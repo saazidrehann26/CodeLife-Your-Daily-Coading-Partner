@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   getUserCircles,
   getPendingCircleInvites,
@@ -6,12 +6,13 @@ import {
   createCircleAsync,
   joinCircleByCodeAsync,
   syncCirclesAndInvitesAsync,
-  sendCircleInviteAsync,
   deleteCircleAsync,
-  searchUsers,
   getCircleMatchHistory,
 } from '../services/groupChallengeService';
-import PublicProfileModal from './PublicProfileModal';
+import {
+  getBattleRequestsForUserCircles,
+  respondBattleRequest,
+} from '../services/battleZoneService';
 import CircleDetailsView from './CircleDetailsView';
 import { getActiveUser } from '../services/dashboardService';
 import './GroupChallengePage.css';
@@ -32,6 +33,10 @@ export default function GroupChallengePage({
   // Circles & Invites
   const [circles, setCircles] = useState(() => (currentUser?.username ? getUserCircles(currentUser.username) : []));
   const [pendingInvites, setPendingInvites] = useState(() => (currentUser?.username ? getPendingCircleInvites(currentUser.username) : []));
+  const [battleRequests, setBattleRequests] = useState(() => {
+    const userCircles = currentUser?.username ? getUserCircles(currentUser.username) : [];
+    return getBattleRequestsForUserCircles(userCircles, currentUser?.username);
+  });
   const [matchHistory, setMatchHistory] = useState(() => getCircleMatchHistory());
   const [selectedCircleId, setSelectedCircleId] = useState(null);
 
@@ -39,10 +44,6 @@ export default function GroupChallengePage({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newCircleName, setNewCircleName] = useState('');
   const [customInviteCodeInput, setCustomInviteCodeInput] = useState('');
-  const [circleCategory, setCircleCategory] = useState('Competitive Battles');
-  const [circleMaxMembers, setCircleMaxMembers] = useState(50);
-  const [circleDescription, setCircleDescription] = useState('');
-  const [inviteFriendsInput, setInviteFriendsInput] = useState('');
   const [createCircleError, setCreateCircleError] = useState(null);
   const [createLoading, setCreateLoading] = useState(false);
 
@@ -54,19 +55,6 @@ export default function GroupChallengePage({
   // Toasts
   const [copiedCodeId, setCopiedCodeId] = useState(null);
   const [successToast, setSuccessToast] = useState(null);
-
-  // Member search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searchLoading, setSearchLoading] = useState(false);
-  const [searchTotal, setSearchTotal] = useState(0);
-  const [searchOffset, setSearchOffset] = useState(0);
-  const [searchHasMore, setSearchHasMore] = useState(false);
-  const [searchError, setSearchError] = useState(null);
-  const debounceTimerRef = useRef(null);
-
-  // Selected member profile modal
-  const [viewingProfileUsername, setViewingProfileUsername] = useState(null);
 
   const handleCopyCode = (code) => {
     if (!code) return;
@@ -123,10 +111,23 @@ export default function GroupChallengePage({
   const reloadData = useCallback(async () => {
     if (!currentUser?.username) return;
     await syncCirclesAndInvitesAsync(currentUser.username);
-    setCircles(getUserCircles(currentUser.username));
+    const updatedCircles = getUserCircles(currentUser.username);
+    setCircles(updatedCircles);
     setPendingInvites(getPendingCircleInvites(currentUser.username));
+    setBattleRequests(getBattleRequestsForUserCircles(updatedCircles, currentUser.username));
     setMatchHistory(getCircleMatchHistory());
   }, [currentUser]);
+
+  // Handle responding to Battle Requests
+  const handleRespondBattleRequest = (requestId, accept) => {
+    if (!currentUser?.username) return;
+    const res = respondBattleRequest(requestId, currentUser.username, accept);
+    const updatedCircles = getUserCircles(currentUser.username);
+    setBattleRequests(getBattleRequestsForUserCircles(updatedCircles, currentUser.username));
+    if (accept && res.battle) {
+      onNavigate?.(`battle-zone/${res.battle.id}`);
+    }
+  };
 
   // Load updated circle data and sync from server on mount and window focus
   useEffect(() => {
@@ -142,60 +143,6 @@ export default function GroupChallengePage({
     };
   }, [reloadData]);
 
-  // Debounced search effect (~300ms, min 2 chars)
-  useEffect(() => {
-    if (debounceTimerRef.current) {
-      clearTimeout(debounceTimerRef.current);
-    }
-
-    const trimmed = searchQuery.trim();
-    if (trimmed.length < 2) {
-      debounceTimerRef.current = setTimeout(() => {
-        setSearchResults([]);
-        setSearchTotal(0);
-        setSearchHasMore(false);
-        setSearchError(null);
-        setSearchLoading(false);
-      }, 0);
-      return;
-    }
-
-    debounceTimerRef.current = setTimeout(async () => {
-      setSearchLoading(true);
-      setSearchError(null);
-      const res = await searchUsers(trimmed, 0, 10, currentUser?.username);
-      if (res.rateLimited) {
-        setSearchError(res.error || 'Rate limit exceeded. Please wait a moment.');
-        setSearchResults([]);
-      } else {
-        setSearchResults(res.results || []);
-        setSearchTotal(res.total || 0);
-        setSearchOffset(0);
-        setSearchHasMore(Boolean(res.hasMore));
-      }
-      setSearchLoading(false);
-    }, 300);
-
-    return () => {
-      if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
-    };
-  }, [searchQuery, currentUser?.username]);
-
-  // Load more search results pagination
-  const handleLoadMoreSearch = async () => {
-    if (searchLoading || !searchHasMore) return;
-    const nextOffset = searchOffset + 10;
-    setSearchLoading(true);
-
-    const res = await searchUsers(searchQuery.trim(), nextOffset, 10, currentUser?.username);
-    if (!res.rateLimited && res.results) {
-      setSearchResults((prev) => [...prev, ...res.results]);
-      setSearchOffset(nextOffset);
-      setSearchHasMore(Boolean(res.hasMore));
-    }
-    setSearchLoading(false);
-  };
-
   // Accept or decline invitation
   const handleRespondInvite = async (inviteId, accept) => {
     if (!currentUser?.username) return;
@@ -207,7 +154,7 @@ export default function GroupChallengePage({
     }
   };
 
-  // Create custom circle handler with optional friend invitations
+  // Create custom circle handler
   const handleCreateCircleSubmit = async (e) => {
     e.preventDefault();
     if (!newCircleName.trim() || !currentUser?.username) return;
@@ -219,27 +166,14 @@ export default function GroupChallengePage({
       const created = await createCircleAsync(
         currentUser.username,
         newCircleName.trim(),
-        circleMaxMembers,
-        customInviteCodeInput.trim() || null,
-        circleCategory,
-        circleDescription
+        50,
+        customInviteCodeInput.trim() || null
       );
 
       if (created) {
-        if (inviteFriendsInput.trim()) {
-          const friendList = inviteFriendsInput
-            .split(/[,;\s]+/)
-            .map((f) => f.replace(/^@/, '').trim())
-            .filter(Boolean);
-          for (const friend of friendList) {
-            await sendCircleInviteAsync(currentUser.username, friend, created.id, created.name);
-          }
-        }
         setCircles(getUserCircles(currentUser.username));
         setNewCircleName('');
         setCustomInviteCodeInput('');
-        setCircleDescription('');
-        setInviteFriendsInput('');
         setShowCreateModal(false);
         setSelectedCircleId(created.id);
         setSuccessToast(`Circle "${created.name}" created! Invite code: ${created.inviteCode}`);
@@ -349,7 +283,7 @@ export default function GroupChallengePage({
               </svg>
               Friend Circle Team Battle
             </span>
-            <h1 className="gc-hero-title">Group Challenge</h1>
+            <h1 className="gc-hero-title">Friend Circle</h1>
             <p className="gc-hero-subtitle">
               Assemble your private circle of friends. Form two teams (Team A vs Team B), pick your team captains, and compete in real-time to solve problems.
             </p>
@@ -409,6 +343,52 @@ export default function GroupChallengePage({
           >
             <span style={{ fontSize: '18px' }}>✓</span>
             <span>{successToast}</span>
+          </div>
+        )}
+
+        {/* Real-time Incoming Battle Request Alert */}
+        {battleRequests.length > 0 && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(80, 25, 20, 0.95), rgba(45, 15, 12, 0.95))',
+              border: '1px solid rgba(255, 180, 150, 0.45)',
+              borderRadius: '12px',
+              padding: '14px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '18px',
+              gap: '14px',
+              boxShadow: '0 4px 24px rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '24px' }}>⚔️</span>
+              <div>
+                <span style={{ fontSize: '15px', fontWeight: '800', color: '#ffffff', display: 'block' }}>
+                  Battle Challenge from {battleRequests[0].fromCircleName}!
+                </span>
+                <span style={{ fontSize: '13px', color: '#ffcfbe' }}>
+                  Admin @{battleRequests[0].fromAdminUsername} has challenged {battleRequests[0].toCircleName} to a live code battle!
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                className="spherical-btn spherical-btn-primary spherical-btn-sm"
+                onClick={() => handleRespondBattleRequest(battleRequests[0].id, true)}
+              >
+                Accept Battle ⚔️
+              </button>
+              <button
+                type="button"
+                className="spherical-btn spherical-btn-sm"
+                onClick={() => handleRespondBattleRequest(battleRequests[0].id, false)}
+              >
+                Decline
+              </button>
+            </div>
           </div>
         )}
 
@@ -508,19 +488,9 @@ export default function GroupChallengePage({
 
           {circles.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '36px 0', color: 'rgba(255, 255, 255, 0.75)' }}>
-              <p style={{ fontSize: '15px', marginBottom: '14px' }}>
+              <p style={{ fontSize: '15px', margin: 0 }}>
                 You have not joined or created any friend circles yet.
               </p>
-              <button
-                type="button"
-                className="spherical-btn spherical-btn-primary"
-                onClick={() => {
-                  setCreateCircleError(null);
-                  setShowCreateModal(true);
-                }}
-              >
-                + Build Your First Circle
-              </button>
             </div>
           ) : (
             <div className="gc-circles-grid">
@@ -624,104 +594,6 @@ export default function GroupChallengePage({
                   </div>
                 );
               })}
-            </div>
-          )}
-        </section>
-
-        {/* Section: Member Search */}
-        <section className="gc-glass-card gc-search-panel">
-          <div className="gc-section-header">
-            <h2 className="gc-heading">
-              <span className="gc-heading-dot" />
-              Find Members & View Public Profiles
-            </h2>
-          </div>
-
-          <div className="gc-search-bar-wrap">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" className="gc-search-icon">
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-
-            <input
-              type="text"
-              className="gc-search-input"
-              placeholder="Search users by username or name (minimum 2 characters)..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
-
-            {searchQuery && (
-              <button
-                type="button"
-                className="gc-search-clear-btn"
-                onClick={() => setSearchQuery('')}
-                aria-label="Clear Search"
-              >
-                ✕
-              </button>
-            )}
-          </div>
-
-          {searchError && (
-            <div style={{ color: '#ff8a80', fontSize: '13px', fontWeight: 600 }}>
-              {searchError}
-            </div>
-          )}
-
-          {searchLoading && (
-            <div style={{ fontSize: '13.5px', color: 'rgba(255, 255, 255, 0.7)' }}>
-              Searching members...
-            </div>
-          )}
-
-          {!searchLoading && searchQuery.trim().length >= 2 && searchResults.length === 0 && !searchError && (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'rgba(255, 255, 255, 0.65)' }}>
-              No users found matching "{searchQuery}".
-            </div>
-          )}
-
-          {searchResults.length > 0 && (
-            <div className="gc-search-results-grid">
-              {searchResults.map((user) => (
-                <div
-                  key={user.username}
-                  className="gc-user-card"
-                  onClick={() => setViewingProfileUsername(user.username)}
-                  title={`View public profile of @${user.username}`}
-                >
-                  <div className="gc-user-card-info">
-                    <img
-                      src={user.photoUrl}
-                      alt={user.name}
-                      className="gc-user-card-avatar"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = '/codelife_logo_white_bg.png';
-                      }}
-                    />
-                    <div className="gc-user-card-texts">
-                      <span className="gc-user-card-name">{user.name}</span>
-                      <span className="gc-user-card-username">@{user.username}</span>
-                      <span className="gc-user-card-institution">{user.institution}</span>
-                    </div>
-                  </div>
-
-                  <span className="gc-user-card-view-btn">View Profile</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {searchHasMore && !searchLoading && (
-            <div style={{ display: 'flex', justifyContent: 'center', marginTop: '10px' }}>
-              <button
-                type="button"
-                className="spherical-btn"
-                onClick={handleLoadMoreSearch}
-              >
-                Load More Results ({searchTotal - searchResults.length} remaining)
-              </button>
             </div>
           )}
         </section>
@@ -832,72 +704,6 @@ export default function GroupChallengePage({
                 </span>
               </div>
 
-              {/* Category & Capacity Row */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-                <div className="modal-form-group">
-                  <label className="modal-label">Category / Focus</label>
-                  <select
-                    className="modal-input"
-                    value={circleCategory}
-                    onChange={(e) => setCircleCategory(e.target.value)}
-                    style={{ background: 'rgba(26, 16, 14, 0.95)', color: '#ffffff' }}
-                  >
-                    <option value="Competitive Battles">⚔️ Competitive Battles</option>
-                    <option value="Daily Algorithms">💡 Daily Algorithms</option>
-                    <option value="Web Development">🌐 Web Development</option>
-                    <option value="Interview Prep">🎯 Interview Prep</option>
-                    <option value="Casual Coding">☕ Casual Coding</option>
-                  </select>
-                </div>
-
-                <div className="modal-form-group">
-                  <label className="modal-label">Max Members</label>
-                  <select
-                    className="modal-input"
-                    value={circleMaxMembers}
-                    onChange={(e) => setCircleMaxMembers(Number(e.target.value))}
-                    style={{ background: 'rgba(26, 16, 14, 0.95)', color: '#ffffff' }}
-                  >
-                    <option value={10}>10 Members</option>
-                    <option value={25}>25 Members</option>
-                    <option value={50}>50 Members (Standard)</option>
-                    <option value={100}>100 Members (Large)</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Motto / Description */}
-              <div className="modal-form-group">
-                <label className="modal-label">
-                  Motto or Description <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  className="modal-input"
-                  placeholder="e.g. Master algorithms and climb the leaderboard"
-                  value={circleDescription}
-                  onChange={(e) => setCircleDescription(e.target.value)}
-                  maxLength={100}
-                />
-              </div>
-
-              {/* Invite Friends */}
-              <div className="modal-form-group">
-                <label className="modal-label">
-                  Invite Friends <span style={{ color: 'rgba(255,255,255,0.5)', fontWeight: 400 }}>(Optional)</span>
-                </label>
-                <input
-                  type="text"
-                  className="modal-input"
-                  placeholder="e.g. friend1, friend2"
-                  value={inviteFriendsInput}
-                  onChange={(e) => setInviteFriendsInput(e.target.value)}
-                />
-                <span style={{ fontSize: '11.5px', color: 'rgba(255, 255, 255, 0.6)', marginTop: '4px', display: 'block' }}>
-                  Invited friends will immediately receive a notification to join.
-                </span>
-              </div>
-
               {createCircleError && (
                 <div style={{ color: '#ff8a80', fontSize: '13px', fontWeight: 600, background: 'rgba(244, 67, 54, 0.15)', padding: '8px 12px', borderRadius: '8px', border: '1px solid rgba(244, 67, 54, 0.3)' }}>
                   {createCircleError}
@@ -994,21 +800,6 @@ export default function GroupChallengePage({
             </form>
           </div>
         </div>
-      )}
-
-      {/* Member Public Profile Modal */}
-      {viewingProfileUsername && (
-        <PublicProfileModal
-          username={viewingProfileUsername}
-          currentUser={currentUser}
-          onClose={() => setViewingProfileUsername(null)}
-          onInviteSent={() => {
-            // Refresh pending states
-            if (currentUser?.username) {
-              setPendingInvites(getPendingCircleInvites(currentUser.username));
-            }
-          }}
-        />
       )}
     </div>
   );

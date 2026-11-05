@@ -468,6 +468,27 @@ app.get('/api/users/:username/public-profile', async (req, res) => {
 // ---------------------------------------------------------------------------
 const CIRCLES_FILE = path.join(__dirname, 'circles_db.json');
 const INVITES_FILE = path.join(__dirname, 'invites_db.json');
+const DELETED_CIRCLES_FILE = path.join(__dirname, 'deleted_circles_db.json');
+
+function loadDeletedCirclesFromFile() {
+  try {
+    if (fs.existsSync(DELETED_CIRCLES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(DELETED_CIRCLES_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (err) {
+    console.error('[Server] Error reading deleted circles DB file:', err);
+  }
+  return [];
+}
+
+function saveDeletedCirclesToFile(ids) {
+  try {
+    fs.writeFileSync(DELETED_CIRCLES_FILE, JSON.stringify(ids, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[Server] Error saving deleted circles DB file:', err);
+  }
+}
 
 function loadCirclesFromFile() {
   try {
@@ -510,6 +531,7 @@ function saveInvitesToFile(invites) {
 }
 
 app.get('/api/circles', async (req, res) => {
+  const deletedSet = new Set(loadDeletedCirclesFromFile());
   const circleMap = new Map();
 
   // PRIMARY: Supabase user_metadata.created_circles
@@ -522,7 +544,7 @@ app.get('/api/circles', async (req, res) => {
             ? u.user_metadata.created_circles
             : [];
           for (const c of uCircles) {
-            if (c && c.id) circleMap.set(c.id, c);
+            if (c && c.id && !deletedSet.has(c.id)) circleMap.set(c.id, c);
           }
         }
       }
@@ -534,17 +556,28 @@ app.get('/api/circles', async (req, res) => {
   // FALLBACK: local file
   try {
     for (const c of loadCirclesFromFile()) {
-      if (c && c.id && !circleMap.has(c.id)) circleMap.set(c.id, c);
+      if (c && c.id && !deletedSet.has(c.id) && !circleMap.has(c.id)) circleMap.set(c.id, c);
     }
   } catch (_e) { /* no-op */ }
 
-  return res.json({ success: true, circles: Array.from(circleMap.values()) });
+  return res.json({
+    success: true,
+    circles: Array.from(circleMap.values()),
+    deletedCircleIds: Array.from(deletedSet),
+  });
 });
 
 app.post('/api/circles', async (req, res) => {
   const circle = req.body;
   if (!circle || !circle.id || !circle.name) {
     return res.status(400).json({ error: 'Valid circle object required' });
+  }
+
+  // If this circle was previously marked deleted, unmark it
+  const deletedSet = new Set(loadDeletedCirclesFromFile());
+  if (deletedSet.has(circle.id)) {
+    deletedSet.delete(circle.id);
+    saveDeletedCirclesToFile(Array.from(deletedSet));
   }
 
   // PRIMARY: persist to Supabase user_metadata (survives Vercel serverless restarts)
@@ -582,11 +615,25 @@ app.post('/api/circles', async (req, res) => {
 
 app.post('/api/circles/sync', async (req, res) => {
   const incoming = Array.isArray(req.body?.circles) ? req.body.circles : [];
+  const clientDeletedIds = Array.isArray(req.body?.deletedCircleIds) ? req.body.deletedCircleIds : [];
+
+  const deletedSet = new Set(loadDeletedCirclesFromFile());
+  let deletedUpdated = false;
+  for (const did of clientDeletedIds) {
+    if (did && !deletedSet.has(did)) {
+      deletedSet.add(did);
+      deletedUpdated = true;
+    }
+  }
+  if (deletedUpdated) {
+    saveDeletedCirclesToFile(Array.from(deletedSet));
+  }
+
   const serverCircles = loadCirclesFromFile();
   const circleMap = new Map();
 
   for (const c of serverCircles) {
-    if (c && c.id) circleMap.set(c.id, c);
+    if (c && c.id && !deletedSet.has(c.id)) circleMap.set(c.id, c);
   }
 
   // Also merge circles from Supabase users' created_circles
@@ -599,7 +646,7 @@ app.post('/api/circles/sync', async (req, res) => {
             ? u.user_metadata.created_circles
             : [];
           for (const uc of uCircles) {
-            if (uc && uc.id && !circleMap.has(uc.id)) {
+            if (uc && uc.id && !deletedSet.has(uc.id) && !circleMap.has(uc.id)) {
               circleMap.set(uc.id, uc);
             }
           }
@@ -611,33 +658,27 @@ app.post('/api/circles/sync', async (req, res) => {
   }
 
   for (const inc of incoming) {
-    if (!inc || !inc.id) continue;
+    if (!inc || !inc.id || deletedSet.has(inc.id)) continue;
     if (!circleMap.has(inc.id)) {
       circleMap.set(inc.id, inc);
     } else {
+      // Authoritative circle already on server: preserve existing server member list
       const existing = circleMap.get(inc.id);
-      const existingMembers = Array.isArray(existing.members) ? existing.members : [];
-      const incMembers = Array.isArray(inc.members) ? inc.members : [];
-      const memberMap = new Map();
-      for (const m of existingMembers) {
-        if (m?.username) memberMap.set(m.username.toLowerCase(), m);
-      }
-      for (const m of incMembers) {
-        if (m?.username && !memberMap.has(m.username.toLowerCase())) {
-          memberMap.set(m.username.toLowerCase(), m);
-        }
-      }
       circleMap.set(inc.id, {
-        ...existing,
         ...inc,
-        members: Array.from(memberMap.values()),
+        ...existing,
+        members: existing.members || inc.members || [],
       });
     }
   }
 
   const merged = Array.from(circleMap.values());
   saveCirclesToFile(merged);
-  return res.json({ success: true, circles: merged });
+  return res.json({
+    success: true,
+    circles: merged,
+    deletedCircleIds: Array.from(deletedSet),
+  });
 });
 
 app.post('/api/circles/join', async (req, res) => {
@@ -780,6 +821,11 @@ app.post('/api/circles/delete', async (req, res) => {
   }
   const cleanAdmin = adminUsername.trim().toLowerCase().replace(/^@/, '');
 
+  // Add to deleted set
+  const deletedSet = new Set(loadDeletedCirclesFromFile());
+  deletedSet.add(circleId);
+  saveDeletedCirclesToFile(Array.from(deletedSet));
+
   // Delete from local file
   try {
     const circles = loadCirclesFromFile();
@@ -819,7 +865,149 @@ app.post('/api/circles/delete', async (req, res) => {
     }
   }
 
-  return res.json({ success: true });
+  return res.json({
+    success: true,
+    deletedCircleId: circleId,
+    deletedCircleIds: Array.from(deletedSet),
+  });
+});
+
+/**
+ * POST /api/circles/remove-member
+ * Admin removes a member from a circle
+ */
+app.post('/api/circles/remove-member', async (req, res) => {
+  const { adminUsername, circleId, targetUsername } = req.body || {};
+  if (!adminUsername || !circleId || !targetUsername) {
+    return res.status(400).json({ error: 'adminUsername, circleId, and targetUsername are required' });
+  }
+  const cleanAdmin = adminUsername.trim().toLowerCase().replace(/^@/, '');
+  const cleanTarget = targetUsername.trim().toLowerCase().replace(/^@/, '');
+
+  if (cleanAdmin === cleanTarget) {
+    return res.status(400).json({ error: 'Admin cannot be removed from their own circle.' });
+  }
+
+  let updatedCircle = null;
+
+  // 1. Update in local file
+  try {
+    const circles = loadCirclesFromFile();
+    const cIdx = circles.findIndex((c) => c.id === circleId);
+    if (cIdx !== -1) {
+      const c = circles[cIdx];
+      const members = Array.isArray(c.members) ? c.members : [];
+      const filtered = members.filter((m) => (m.username || '').toLowerCase().replace(/^@/, '') !== cleanTarget);
+      circles[cIdx] = { ...c, members: filtered };
+      saveCirclesToFile(circles);
+      updatedCircle = circles[cIdx];
+    }
+  } catch (_e) { /* no-op */ }
+
+  // 2. Update in Supabase
+  if (supabaseAdmin) {
+    try {
+      const adminUser = await findSupabaseUser(cleanAdmin);
+      if (adminUser && adminUser.id) {
+        const createdCircles = Array.isArray(adminUser.user_metadata?.created_circles)
+          ? adminUser.user_metadata.created_circles
+          : [];
+        const cIdx = createdCircles.findIndex((c) => c.id === circleId);
+        if (cIdx !== -1) {
+          const c = createdCircles[cIdx];
+          const members = Array.isArray(c.members) ? c.members : [];
+          const filtered = members.filter((m) => (m.username || '').toLowerCase().replace(/^@/, '') !== cleanTarget);
+          createdCircles[cIdx] = { ...c, members: filtered };
+          updatedCircle = createdCircles[cIdx];
+          await supabaseAdmin.auth.admin.updateUserById(adminUser.id, {
+            user_metadata: { ...adminUser.user_metadata, created_circles: createdCircles },
+          });
+        }
+      }
+
+      // Also remove circle from targetUser's joined_circles
+      const targetUser = await findSupabaseUser(cleanTarget);
+      if (targetUser && targetUser.id) {
+        const joinedCircles = Array.isArray(targetUser.user_metadata?.joined_circles)
+          ? targetUser.user_metadata.joined_circles.filter((c) => c.id !== circleId)
+          : [];
+        await supabaseAdmin.auth.admin.updateUserById(targetUser.id, {
+          user_metadata: { ...targetUser.user_metadata, joined_circles: joinedCircles },
+        });
+      }
+    } catch (e) {
+      console.warn('[Server] Error removing member in Supabase:', e.message);
+    }
+  }
+
+  return res.json({ success: true, circle: updatedCircle });
+});
+
+/**
+ * POST /api/circles/leave
+ * Member leaves a circle
+ */
+app.post('/api/circles/leave', async (req, res) => {
+  const { username, circleId } = req.body || {};
+  if (!username || !circleId) {
+    return res.status(400).json({ error: 'username and circleId are required' });
+  }
+  const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
+
+  let updatedCircle = null;
+
+  // 1. Update in local file
+  try {
+    const circles = loadCirclesFromFile();
+    const cIdx = circles.findIndex((c) => c.id === circleId);
+    if (cIdx !== -1) {
+      const c = circles[cIdx];
+      const members = Array.isArray(c.members) ? c.members : [];
+      const filtered = members.filter((m) => (m.username || '').toLowerCase().replace(/^@/, '') !== cleanUser);
+      circles[cIdx] = { ...c, members: filtered };
+      saveCirclesToFile(circles);
+      updatedCircle = circles[cIdx];
+    }
+  } catch (_e) { /* no-op */ }
+
+  // 2. Update in Supabase
+  if (supabaseAdmin) {
+    try {
+      // Find leaving user and remove from joined_circles
+      const leavingUser = await findSupabaseUser(cleanUser);
+      if (leavingUser && leavingUser.id) {
+        const joined = Array.isArray(leavingUser.user_metadata?.joined_circles)
+          ? leavingUser.user_metadata.joined_circles.filter((c) => c.id !== circleId)
+          : [];
+        await supabaseAdmin.auth.admin.updateUserById(leavingUser.id, {
+          user_metadata: { ...leavingUser.user_metadata, joined_circles: joined },
+        });
+      }
+
+      // Find circle admin in Supabase and update created_circles
+      const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+      if (!error && Array.isArray(users)) {
+        for (const u of users) {
+          const created = Array.isArray(u.user_metadata?.created_circles) ? u.user_metadata.created_circles : [];
+          const cIdx = created.findIndex((c) => c.id === circleId);
+          if (cIdx !== -1) {
+            const members = Array.isArray(created[cIdx].members) ? created[cIdx].members : [];
+            const filtered = members.filter((m) => (m.username || '').toLowerCase().replace(/^@/, '') !== cleanUser);
+            created[cIdx] = { ...created[cIdx], members: filtered };
+            updatedCircle = created[cIdx];
+            await supabaseAdmin.auth.admin.updateUserById(u.id, {
+              user_metadata: { ...u.user_metadata, created_circles: created },
+            });
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('[Server] Error leaving circle in Supabase:', e.message);
+    }
+  }
+
+  return res.json({ success: true, circle: updatedCircle });
 });
 
 app.get('/api/invites/:username', async (req, res) => {
@@ -1017,9 +1205,479 @@ app.post('/api/compile', async (req, res) => {
   }
 });
 
-// Production fallback to index.html for client routing (Express 5 compatible)
-app.use((req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+// ---------------------------------------------------------------------------
+// Battle Zone Storage & Real-Time SSE Infrastructure
+// ---------------------------------------------------------------------------
+const BATTLES_FILE = path.join(__dirname, 'battles_db.json');
+const BATTLE_REQUESTS_FILE = path.join(__dirname, 'battle_requests_db.json');
+
+function loadBattlesFromFile() {
+  try {
+    if (fs.existsSync(BATTLES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(BATTLES_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (err) {
+    console.error('[Server] Error reading battles DB file:', err);
+  }
+  return [];
+}
+
+function saveBattlesToFile(battles) {
+  try {
+    fs.writeFileSync(BATTLES_FILE, JSON.stringify(battles, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[Server] Error saving battles DB file:', err);
+  }
+}
+
+function loadBattleRequestsFromFile() {
+  try {
+    if (fs.existsSync(BATTLE_REQUESTS_FILE)) {
+      const data = JSON.parse(fs.readFileSync(BATTLE_REQUESTS_FILE, 'utf8'));
+      if (Array.isArray(data)) return data;
+    }
+  } catch (err) {
+    console.error('[Server] Error reading battle requests DB file:', err);
+  }
+  return [];
+}
+
+function saveBattleRequestsToFile(requests) {
+  try {
+    fs.writeFileSync(BATTLE_REQUESTS_FILE, JSON.stringify(requests, null, 2), 'utf8');
+  } catch (err) {
+    console.error('[Server] Error saving battle requests DB file:', err);
+  }
+}
+
+const battleSSEConnections = new Map();
+
+function broadcastBattleEvent(battleId, eventData) {
+  const listeners = battleSSEConnections.get(battleId);
+  if (listeners && listeners.size > 0) {
+    const payload = `data: ${JSON.stringify(eventData)}\n\n`;
+    for (const clientRes of listeners) {
+      try {
+        clientRes.write(payload);
+      } catch {
+        listeners.delete(clientRes);
+      }
+    }
+  }
+}
+
+function sanitizeBattleForUser(battle, username) {
+  if (!battle) return null;
+  const clean = (username || '').trim().toLowerCase().replace(/^@/, '');
+  const isTeamAMember = battle.teams?.teamA?.members?.some((m) => m.username?.toLowerCase() === clean);
+  const isTeamBMember = battle.teams?.teamB?.members?.some((m) => m.username?.toLowerCase() === clean);
+  const isSpectator = !isTeamAMember && !isTeamBMember;
+  const userTeamKey = isTeamAMember ? 'teamA' : isTeamBMember ? 'teamB' : null;
+  const isBattleFinished = battle.phase === 'FINISHED';
+
+  const clone = JSON.parse(JSON.stringify(battle));
+
+  if (!isBattleFinished) {
+    if (userTeamKey === 'teamA') {
+      clone.teams.teamB.code = '// Opponent code is hidden to ensure fair competition';
+      clone.teams.teamB.output = '';
+      for (const r of clone.rounds || []) {
+        if (r.teamBChallenge) {
+          r.teamBChallenge.referenceSolution = '[Protected]';
+          r.teamBChallenge.testCases = (r.teamBChallenge.testCases || []).filter((tc) => tc.isSample);
+        }
+      }
+    } else if (userTeamKey === 'teamB') {
+      clone.teams.teamA.code = '// Opponent code is hidden to ensure fair competition';
+      clone.teams.teamA.output = '';
+      for (const r of clone.rounds || []) {
+        if (r.teamAChallenge) {
+          r.teamAChallenge.referenceSolution = '[Protected]';
+          r.teamAChallenge.testCases = (r.teamAChallenge.testCases || []).filter((tc) => tc.isSample);
+        }
+      }
+    } else if (isSpectator && !battle.settings?.allowSpectators) {
+      clone.teams.teamA.code = '// Spectator view disabled by match admin';
+      clone.teams.teamB.code = '// Spectator view disabled by match admin';
+    }
+  }
+
+  clone.viewer = {
+    username: clean,
+    isTeamAMember,
+    isTeamBMember,
+    isSpectator,
+    teamKey: userTeamKey,
+  };
+
+  return clone;
+}
+
+function checkAndUpdateBattleTimeouts(battle) {
+  if (!battle || !battle.phaseEndTime) return false;
+  const now = Date.now();
+  const end = new Date(battle.phaseEndTime).getTime();
+  if (now < end) return false;
+
+  const currentRound = battle.rounds[battle.currentRound - 1];
+
+  if (battle.phase === 'AUTHORING') {
+    // Timeout in authoring: auto-pick fallback challenges
+    if (!currentRound.teamAChallenge?.published) {
+      currentRound.teamAChallenge = {
+        id: `fb_${Date.now()}_teamA`,
+        authorTeam: 'teamA',
+        authorUsername: 'CodeLife Auto-Judge',
+        title: 'Two Sum Problem',
+        description: 'Given an array of integers and target, find two numbers summing to target.',
+        constraints: 'Time limit: 2s, Memory: 128MB',
+        type: 'from_scratch',
+        language: battle.language,
+        starterCode: '# Python 3\ndef solve():\n    pass\n',
+        referenceSolution: '# Solution\n',
+        testCases: [{ id: 'tc_1', input: '2 7 11 15\n9', expectedOutput: '0 1', isSample: true, isHidden: false }],
+        published: true,
+        isFallback: true,
+      };
+      battle.teams.teamA.status = 'submitted';
+    }
+    if (!currentRound.teamBChallenge?.published) {
+      currentRound.teamBChallenge = {
+        id: `fb_${Date.now()}_teamB`,
+        authorTeam: 'teamB',
+        authorUsername: 'CodeLife Auto-Judge',
+        title: 'Palindrome Number',
+        description: 'Determine whether an integer is a palindrome without converting to string.',
+        constraints: 'Time limit: 2s, Memory: 128MB',
+        type: 'from_scratch',
+        language: battle.language,
+        starterCode: '# Python 3\ndef solve():\n    pass\n',
+        referenceSolution: '# Solution\n',
+        testCases: [{ id: 'tc_1', input: '121', expectedOutput: 'true', isSample: true, isHidden: false }],
+        published: true,
+        isFallback: true,
+      };
+      battle.teams.teamB.status = 'submitted';
+    }
+
+    // Advance to SWAP
+    const swapSeconds = battle.settings?.swapCountdownSeconds || 5;
+    battle.phase = 'SWAP';
+    battle.phaseStartedAt = new Date(now).toISOString();
+    battle.phaseDurationSeconds = swapSeconds;
+    battle.phaseEndTime = new Date(now + swapSeconds * 1000).toISOString();
+    return true;
+  }
+
+  if (battle.phase === 'SWAP') {
+    // Advance to SOLVING
+    const solvingSeconds = (battle.settings?.solvingTimeMinutes || 15) * 60;
+    battle.phase = 'SOLVING';
+    battle.phaseStartedAt = new Date(now).toISOString();
+    battle.phaseDurationSeconds = solvingSeconds;
+    battle.phaseEndTime = new Date(now + solvingSeconds * 1000).toISOString();
+    battle.teams.teamA.status = 'writing';
+    battle.teams.teamB.status = 'writing';
+    if (currentRound.teamBChallenge?.starterCode) {
+      battle.teams.teamA.code = currentRound.teamBChallenge.starterCode;
+    }
+    if (currentRound.teamAChallenge?.starterCode) {
+      battle.teams.teamB.code = currentRound.teamAChallenge.starterCode;
+    }
+    return true;
+  }
+
+  if (battle.phase === 'SOLVING') {
+    // Advance to ROUND_RESULT
+    battle.phase = 'ROUND_RESULT';
+    battle.phaseStartedAt = new Date(now).toISOString();
+    battle.phaseDurationSeconds = 15;
+    battle.phaseEndTime = new Date(now + 15 * 1000).toISOString();
+
+    const teamAPassed = Boolean(currentRound.teamASubmission?.allPassed);
+    const teamBPassed = Boolean(currentRound.teamBSubmission?.allPassed);
+    let roundWinner = 'tie';
+    if (teamAPassed && !teamBPassed) roundWinner = 'teamA';
+    else if (teamBPassed && !teamAPassed) roundWinner = 'teamB';
+    else if (teamAPassed && teamBPassed) {
+      const timeA = currentRound.teamASubmission?.solveTimeSeconds || 999999;
+      const timeB = currentRound.teamBSubmission?.solveTimeSeconds || 999999;
+      if (timeA < timeB) roundWinner = 'teamA';
+      else if (timeB < timeA) roundWinner = 'teamB';
+    }
+
+    currentRound.result = {
+      winner: roundWinner,
+      teamAPassed,
+      teamBPassed,
+      teamAScore: battle.teams.teamA.score,
+      teamBScore: battle.teams.teamB.score,
+    };
+    currentRound.status = 'completed';
+    return true;
+  }
+
+  return false;
+}
+
+// ---------------------------------------------------------------------------
+// Battle Zone Endpoints
+// ---------------------------------------------------------------------------
+
+// Real-Time SSE Stream for Battle Zone
+app.get('/api/battles/:battleId/events', (req, res) => {
+  const { battleId } = req.params;
+  res.writeHead(200, {
+    'Content-Type': 'text/event-stream',
+    'Cache-Control': 'no-cache',
+    Connection: 'keep-alive',
+  });
+  res.write(`data: ${JSON.stringify({ type: 'connected', battleId })}\n\n`);
+
+  if (!battleSSEConnections.has(battleId)) {
+    battleSSEConnections.set(battleId, new Set());
+  }
+  const set = battleSSEConnections.get(battleId);
+  set.add(res);
+
+  // Keep-alive heartbeat every 15s
+  const heartbeat = setInterval(() => {
+    try {
+      res.write(': keep-alive\n\n');
+    } catch {
+      clearInterval(heartbeat);
+      set.delete(res);
+    }
+  }, 15000);
+
+  req.on('close', () => {
+    clearInterval(heartbeat);
+    set.delete(res);
+    if (set.size === 0) battleSSEConnections.delete(battleId);
+  });
+});
+
+// GET /api/battles/:battleId
+app.get('/api/battles/:battleId', (req, res) => {
+  const { battleId } = req.params;
+  const username = req.query.username;
+  const battles = loadBattlesFromFile();
+  const battle = battles.find((b) => b.id === battleId);
+  if (!battle) {
+    return res.status(404).json({ error: 'Battle not found' });
+  }
+
+  const updated = checkAndUpdateBattleTimeouts(battle);
+  if (updated) {
+    saveBattlesToFile(battles);
+    broadcastBattleEvent(battleId, { type: 'phase_change', phase: battle.phase, battle });
+  }
+
+  const sanitized = sanitizeBattleForUser(battle, username);
+  return res.json({ success: true, battle: sanitized });
+});
+
+// POST /api/battles (Create battle)
+app.post('/api/battles', (req, res) => {
+  const battle = req.body;
+  if (!battle || !battle.id) {
+    return res.status(400).json({ error: 'Valid battle object required' });
+  }
+
+  const battles = loadBattlesFromFile();
+  const idx = battles.findIndex((b) => b.id === battle.id);
+  if (idx !== -1) {
+    battles[idx] = battle;
+  } else {
+    battles.unshift(battle);
+  }
+  saveBattlesToFile(battles);
+  broadcastBattleEvent(battle.id, { type: 'battle_created', battle });
+
+  return res.json({ success: true, battle });
+});
+
+// POST /api/battles/:battleId/settings
+app.post('/api/battles/:battleId/settings', (req, res) => {
+  const { battleId } = req.params;
+  const { username, updates } = req.body || {};
+  const battles = loadBattlesFromFile();
+  const battle = battles.find((b) => b.id === battleId);
+  if (!battle) return res.status(404).json({ error: 'Battle not found' });
+
+  if (updates) {
+    battle.settings = { ...battle.settings, ...updates };
+    if (updates.language) {
+      battle.language = updates.language;
+    }
+    battle.teams.teamA.captainReady = false;
+    battle.teams.teamB.captainReady = false;
+  }
+  saveBattlesToFile(battles);
+  broadcastBattleEvent(battleId, { type: 'settings_updated', battle, updatedBy: username });
+
+  return res.json({ success: true, battle });
+});
+
+// POST /api/battles/:battleId/ready
+app.post('/api/battles/:battleId/ready', (req, res) => {
+  const { battleId } = req.params;
+  const { username, teamKey, isReady } = req.body || {};
+  const battles = loadBattlesFromFile();
+  const battle = battles.find((b) => b.id === battleId);
+  if (!battle) return res.status(404).json({ error: 'Battle not found' });
+
+  if (battle.teams[teamKey]) {
+    battle.teams[teamKey].captainReady = Boolean(isReady);
+  }
+  saveBattlesToFile(battles);
+  broadcastBattleEvent(battleId, { type: 'captain_ready', teamKey, isReady, battle });
+
+  return res.json({ success: true, battle });
+});
+
+// POST /api/battles/:battleId/start
+app.post('/api/battles/:battleId/start', (req, res) => {
+  const { battleId } = req.params;
+  const { username } = req.body || {};
+  const battles = loadBattlesFromFile();
+  const battle = battles.find((b) => b.id === battleId);
+  if (!battle) return res.status(404).json({ error: 'Battle not found' });
+
+  const authoringDurationSeconds = (battle.settings?.authoringTimeMinutes || 10) * 60;
+  const now = Date.now();
+  battle.phase = 'AUTHORING';
+  battle.phaseStartedAt = new Date(now).toISOString();
+  battle.phaseDurationSeconds = authoringDurationSeconds;
+  battle.phaseEndTime = new Date(now + authoringDurationSeconds * 1000).toISOString();
+  battle.teams.teamA.status = 'writing';
+  battle.teams.teamB.status = 'writing';
+
+  saveBattlesToFile(battles);
+  broadcastBattleEvent(battleId, { type: 'phase_change', phase: 'AUTHORING', battle });
+
+  return res.json({ success: true, battle });
+});
+
+// POST /api/battles/:battleId/sync-code (Real-time collaborative editing for teammates)
+app.post('/api/battles/:battleId/sync-code', (req, res) => {
+  const { battleId } = req.params;
+  const { username, teamKey, code, stdin } = req.body || {};
+  const battles = loadBattlesFromFile();
+  const battle = battles.find((b) => b.id === battleId);
+  if (!battle) return res.status(404).json({ error: 'Battle not found' });
+
+  if (battle.teams[teamKey]) {
+    battle.teams[teamKey].code = code;
+    if (stdin !== undefined) battle.teams[teamKey].stdin = stdin;
+    battle.teams[teamKey].status = 'writing';
+  }
+  saveBattlesToFile(battles);
+  broadcastBattleEvent(battleId, { type: 'code_sync', teamKey, code, user: username });
+
+  return res.json({ success: true });
+});
+
+// POST /api/battles/:battleId/challenge (Publish authoring challenge)
+app.post('/api/battles/:battleId/challenge', (req, res) => {
+  const { battleId } = req.params;
+  const { username, teamKey, challenge } = req.body || {};
+  const battles = loadBattlesFromFile();
+  const battle = battles.find((b) => b.id === battleId);
+  if (!battle) return res.status(404).json({ error: 'Battle not found' });
+
+  const currentRound = battle.rounds[battle.currentRound - 1];
+  if (teamKey === 'teamA') {
+    currentRound.teamAChallenge = challenge;
+    battle.teams.teamA.status = 'submitted';
+  } else {
+    currentRound.teamBChallenge = challenge;
+    battle.teams.teamB.status = 'submitted';
+  }
+
+  // If both published, trigger SWAP countdown!
+  if (currentRound.teamAChallenge?.published && currentRound.teamBChallenge?.published) {
+    const swapSeconds = battle.settings?.swapCountdownSeconds || 5;
+    const now = Date.now();
+    battle.phase = 'SWAP';
+    battle.phaseStartedAt = new Date(now).toISOString();
+    battle.phaseDurationSeconds = swapSeconds;
+    battle.phaseEndTime = new Date(now + swapSeconds * 1000).toISOString();
+  }
+
+  saveBattlesToFile(battles);
+  broadcastBattleEvent(battleId, { type: 'challenge_published', teamKey, phase: battle.phase, battle });
+
+  return res.json({ success: true, battle });
+});
+
+// POST /api/battles/:battleId/submit (Submit solution for evaluation)
+app.post('/api/battles/:battleId/submit', (req, res) => {
+  const { battleId } = req.params;
+  const { username, teamKey, submission } = req.body || {};
+  const battles = loadBattlesFromFile();
+  const battle = battles.find((b) => b.id === battleId);
+  if (!battle) return res.status(404).json({ error: 'Battle not found' });
+
+  const currentRound = battle.rounds[battle.currentRound - 1];
+  const team = battle.teams[teamKey];
+
+  if (teamKey === 'teamA') {
+    currentRound.teamASubmission = submission;
+  } else {
+    currentRound.teamBSubmission = submission;
+  }
+
+  if (submission.allPassed) {
+    team.status = 'passed';
+    team.score += 1;
+    team.totalSolveTimeSeconds += submission.solveTimeSeconds || 0;
+  } else {
+    team.status = 'failed';
+    team.wrongSubmissionsCount += 1;
+  }
+
+  // Check if both teams completed
+  if (currentRound.teamASubmission?.allPassed && currentRound.teamBSubmission?.allPassed) {
+    checkAndUpdateBattleTimeouts(battle);
+  }
+
+  saveBattlesToFile(battles);
+  broadcastBattleEvent(battleId, { type: 'submission_result', teamKey, allPassed: submission.allPassed, battle });
+
+  return res.json({ success: true, battle });
+});
+
+// Battle Requests Endpoints
+app.get('/api/battles/requests/:circleId', (req, res) => {
+  const { circleId } = req.params;
+  const all = loadBattleRequestsFromFile();
+  const filtered = all.filter((r) => r.toCircleId === circleId && r.status === 'pending');
+  return res.json({ success: true, requests: filtered });
+});
+
+app.post('/api/battles/requests', (req, res) => {
+  const reqData = req.body;
+  if (!reqData || !reqData.fromCircleId || !reqData.toCircleId) {
+    return res.status(400).json({ error: 'Valid request data required' });
+  }
+  const all = loadBattleRequestsFromFile();
+  all.unshift(reqData);
+  saveBattleRequestsToFile(all);
+  return res.json({ success: true, request: reqData });
+});
+
+app.post('/api/battles/requests/:requestId/respond', (req, res) => {
+  const { requestId } = req.params;
+  const { username, accept } = req.body || {};
+  const all = loadBattleRequestsFromFile();
+  const idx = all.findIndex((r) => r.id === requestId);
+  if (idx === -1) return res.status(404).json({ error: 'Request not found' });
+
+  all[idx].status = accept ? 'accepted' : 'declined';
+  saveBattleRequestsToFile(all);
+  return res.json({ success: true, request: all[idx] });
 });
 
 /**
@@ -1050,6 +1708,11 @@ app.post('/api/users/save-code', async (req, res) => {
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
+});
+
+// Production fallback to index.html for client routing (Express 5 compatible)
+app.use((req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
 
 if (process.env.NODE_ENV !== 'production') {

@@ -124,7 +124,7 @@ export default function LandingPage({ onGetStarted, currentUser, onNavigate, onS
 
           {/* Right Navigation Controls */}
           <nav className="landing-nav-links" aria-label="Main Navigation">
-            {/* Top-Level Group Challenge Action */}
+            {/* Top-Level Friend Circle Action */}
             <button
               type="button"
               className="landing-nav-item landing-group-challenge-btn"
@@ -137,7 +137,7 @@ export default function LandingPage({ onGetStarted, currentUser, onNavigate, onS
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
-              <span>Group Challenge</span>
+              <span>Friend Circle</span>
               {hasGroupNotifications && <span className="landing-badge-dot" />}
             </button>
 
@@ -518,16 +518,19 @@ export default function LandingPage({ onGetStarted, currentUser, onNavigate, onS
                 </p>
                 <div className="contact-details-box">
                   <div className="contact-row">
-                    <span className="contact-label">Email Support:</span>
-                    <a href="mailto:support@codelife.dev" className="contact-val">support@codelife.dev</a>
+                    <span className="contact-label">Email:</span>
+                    <a href="mailto:localhost500err0r@gmail.com" className="contact-val">localhost500err0r@gmail.com</a>
                   </div>
                   <div className="contact-row">
-                    <span className="contact-label">Feedback:</span>
-                    <a href="mailto:feedback@codelife.dev" className="contact-val">feedback@codelife.dev</a>
-                  </div>
-                  <div className="contact-row">
-                    <span className="contact-label">Community:</span>
-                    <span className="contact-val">CodeLife Developer Community Hub</span>
+                    <span className="contact-label">Facebook page:</span>
+                    <a
+                      href="https://www.facebook.com/profile.php?id=61595822140947"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="contact-val"
+                    >
+                      CodeLife-Your Daily Coding Partner
+                    </a>
                   </div>
                 </div>
                 <button

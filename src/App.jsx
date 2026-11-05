@@ -8,6 +8,7 @@ import SignUpOtpPage from './components/SignUpOtpPage';
 import DeviceVerificationPage from './components/DeviceVerificationPage';
 import DashboardPage from './components/DashboardPage';
 import GroupChallengePage from './components/GroupChallengePage';
+import BattleZonePage from './components/BattleZonePage';
 import CompanyLogo from './components/CompanyLogo';
 import { setActiveUser, getActiveUser } from './services/dashboardService';
 import { deleteUser, syncUsersFromSupabase } from './services/dbService';
@@ -26,7 +27,26 @@ const VALID_PAGES = [
   'device-verification',
   'dashboard',
   'group-challenge',
+  'battle-zone',
 ];
+
+/**
+ * Helper to extract battleId from window hash or URL
+ */
+const getBattleIdFromUrl = () => {
+  if (typeof window === 'undefined') return null;
+  const hash = window.location.hash.replace(/^#\/?/, '').trim();
+  const hashMatch = hash.match(/^battle-zone\/([^/?#]+)/i);
+  if (hashMatch) return hashMatch[1];
+  const pathMatch = (window.location.pathname || '').match(/^\/battle-zone\/([^/?#]+)/i);
+  if (pathMatch) return pathMatch[1];
+  try {
+    const searchParams = new URLSearchParams(window.location.search);
+    return searchParams.get('battleId') || null;
+  } catch {
+    return null;
+  }
+};
 
 /**
  * Known sub-hashes that belong to dashboard modals and views
@@ -42,6 +62,7 @@ const DASHBOARD_HASHES = [
   'view-code',
   'add-code',
   'settings',
+  'find-friends',
   'personal-details',
   'profile',
 ];
@@ -54,10 +75,13 @@ const DASHBOARD_HASHES = [
 const getPageFromHash = () => {
   if (typeof window === 'undefined') return 'landing';
 
-  // Check if browser URL is navigating to /group-challenge
+  // Check if browser URL is navigating to /group-challenge or /battle-zone
   const pathname = (window.location.pathname || '').replace(/^\//, '').toLowerCase();
   if (pathname === 'group-challenge' || pathname.startsWith('group-challenge/')) {
     return 'group-challenge';
+  }
+  if (pathname === 'battle-zone' || pathname.startsWith('battle-zone/')) {
+    return 'battle-zone';
   }
 
   // On fresh window session start (e.g. opening localhost in a new tab or window),
@@ -69,6 +93,9 @@ const getPageFromHash = () => {
     if (directHash === 'group-challenge' || directHash.startsWith('group-challenge/') || directHash.startsWith('group-challenge-')) {
       return 'group-challenge';
     }
+    if (directHash === 'battle-zone' || directHash.startsWith('battle-zone/') || directHash.startsWith('battle-zone-')) {
+      return 'battle-zone';
+    }
     if (window.location.hash && window.location.hash !== '#landing') {
       window.history.replaceState({ page: 'landing' }, '', window.location.pathname);
     }
@@ -79,6 +106,10 @@ const getPageFromHash = () => {
 
   if (hash === 'group-challenge' || hash.startsWith('group-challenge/') || hash.startsWith('group-challenge-') || hash.startsWith('group-challenge?')) {
     return 'group-challenge';
+  }
+
+  if (hash === 'battle-zone' || hash.startsWith('battle-zone/') || hash.startsWith('battle-zone-') || hash.startsWith('battle-zone?')) {
+    return 'battle-zone';
   }
   
   if (DASHBOARD_HASHES.some((dh) => hash === dh || hash.startsWith(dh + '-') || hash.startsWith(dh + '/'))) {
@@ -99,6 +130,7 @@ export default function App() {
   
   // Active logged-in user state
   const [currentUser, setCurrentUser] = useState(() => getActiveUser());
+  const [activeBattleId, setActiveBattleId] = useState(() => getBattleIdFromUrl());
   
   // Data passed between recovery and registration flow pages
   const [recoveryData, setRecoveryData] = useState(null);
@@ -115,30 +147,48 @@ export default function App() {
    * @param {boolean} pushHistory - Whether to push a new entry to browser history
    * @param {boolean} replaceHistory - Whether to replace the current history entry
    */
-  const navigateTo = useCallback((page, toastMessage = null, pushHistory = true, replaceHistory = false) => {
-    if (!VALID_PAGES.includes(page)) {
-      page = 'landing';
+  const navigateTo = useCallback((page, toastMessage = null, pushHistory = true, replaceHistory = false, extraBattleId = null) => {
+    let targetPage = page;
+    let targetBattleId = extraBattleId;
+
+    if (page.startsWith('battle-zone/')) {
+      const parts = page.split('/');
+      targetPage = 'battle-zone';
+      targetBattleId = parts[1];
+    } else if (page.startsWith('battle-zone?')) {
+      targetPage = 'battle-zone';
+    }
+
+    if (targetBattleId) {
+      setActiveBattleId(targetBattleId);
+    }
+
+    if (!VALID_PAGES.includes(targetPage)) {
+      targetPage = 'landing';
     }
 
     if (toastMessage) {
       setInitialNotification(toastMessage);
     }
-    setCurrentPage(page);
+    setCurrentPage(targetPage);
 
     if (typeof window !== 'undefined') {
-      const targetHash = page === 'landing' ? '' : `#${page}`;
+      let targetHash = targetPage === 'landing' ? '' : `#${targetPage}`;
+      if (targetPage === 'battle-zone' && targetBattleId) {
+        targetHash = `#battle-zone/${targetBattleId}`;
+      }
       const newUrl = targetHash ? `${window.location.pathname}${targetHash}` : window.location.pathname;
       
       if (replaceHistory) {
         window.history.replaceState(
-          { page },
+          { page: targetPage, battleId: targetBattleId },
           '',
           newUrl
         );
       } else if (pushHistory) {
         // Push new state entry into the browser's session history stack
         window.history.pushState(
-          { page },
+          { page: targetPage, battleId: targetBattleId },
           '',
           newUrl
         );
@@ -155,6 +205,11 @@ export default function App() {
       const pageFromState = event.state?.page;
       const pageFromUrl = getPageFromHash();
       let targetPage = pageFromState || pageFromUrl || 'landing';
+
+      const battleIdFromState = event.state?.battleId || getBattleIdFromUrl();
+      if (battleIdFromState) {
+        setActiveBattleId(battleIdFromState);
+      }
 
       // Crucial fix: If user is logged in, never let backward navigation kick them to signin
       const activeUser = getActiveUser();
@@ -354,6 +409,27 @@ export default function App() {
           setCurrentUser(null);
           navigateTo('landing');
         }}
+      />
+    );
+  }
+
+  // When in live Battle Zone split-screen arena
+  if (currentPage === 'battle-zone') {
+    const verifiedUser = getActiveUser();
+    if (!verifiedUser) {
+      if (currentUser) setCurrentUser(null);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('codelife_return_page', activeBattleId ? `battle-zone/${activeBattleId}` : 'battle-zone');
+      }
+      navigateTo('signin', 'Please sign in to enter the Battle Zone arena.', true, true);
+      return null;
+    }
+
+    return (
+      <BattleZonePage
+        battleId={activeBattleId}
+        currentUser={verifiedUser}
+        onNavigate={navigateTo}
       />
     );
   }

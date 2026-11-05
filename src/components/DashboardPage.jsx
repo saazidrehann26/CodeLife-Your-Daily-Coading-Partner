@@ -22,6 +22,7 @@ import {
 import { deleteUser } from '../services/dbService';
 import './DashboardPage.css';
 import OnlineCompiler from './OnlineCompiler';
+import FindFriendsModal from './FindFriendsModal';
 
 /**
  * Three selectable language options for the Practice Area with official white logos
@@ -189,6 +190,8 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
         hashTag = '#add-code';
       } else if (modalName === 'settings') {
         hashTag = '#settings';
+      } else if (modalName === 'find_friends') {
+        hashTag = '#find-friends';
       } else if (modalName === 'personal_details') {
         hashTag = '#personal-details';
       } else if (modalName === 'profile') {
@@ -539,7 +542,7 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
             type="button"
             className="spherical-btn spherical-btn-sm"
             onClick={() => onNavigate && onNavigate('group-challenge')}
-            title="Open Group Challenge"
+            title="Open Friend Circle"
             style={{
               display: 'inline-flex',
               alignItems: 'center',
@@ -555,7 +558,7 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
               <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
               <path d="M16 3.13a4 4 0 0 1 0 7.75" />
             </svg>
-            <span>Group Challenge</span>
+            <span>Friend Circle</span>
             {hasGroupNotifications && (
               <span
                 style={{
@@ -569,12 +572,10 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
             )}
           </button>
 
-          {/* Authenticated User Profile Pill */}
+          {/* Authenticated User Profile Pill (Display only - non-clickable) */}
           <div
             className="dash-user-pill"
-            onClick={() => openModal('profile')}
-            style={{ cursor: 'pointer' }}
-            title="View User Profile"
+            aria-label={`Logged in as ${profile.fullName}`}
           >
             <span className="dash-user-name">{profile.fullName}</span>
           </div>
@@ -629,7 +630,7 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                   <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                   <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                 </svg>
-                <span>Group Challenge</span>
+                <span>Friend Circle</span>
                 {hasGroupNotifications && <span className="sidebar-badge-dot" />}
               </button>
 
@@ -655,6 +656,21 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
                   <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
                 </svg>
                 <span>Code Store</span>
+              </button>
+
+              <button
+                type="button"
+                className="sidebar-nav-btn"
+                onClick={() => openModal('find_friends')}
+                title="Find Your Friend"
+              >
+                <svg className="sidebar-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="23" y1="11" x2="17" y2="11" />
+                </svg>
+                <span>Find Your Friend</span>
               </button>
 
               <button
@@ -1348,6 +1364,16 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
             />
           </div>
         </div>
+      )}
+
+      {/* =====================================================================
+          MODAL: FIND YOUR FRIEND
+          ===================================================================== */}
+      {activeModal === 'find_friends' && (
+        <FindFriendsModal
+          currentUser={profile}
+          onClose={() => closeModal()}
+        />
       )}
 
       {/* =====================================================================

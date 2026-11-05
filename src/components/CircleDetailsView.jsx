@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import {
   getCircleById,
-  removeMemberFromCircle,
-  leaveCircle,
+  removeMemberFromCircleAsync,
+  leaveCircleAsync,
   deleteCircleAsync,
   sendCircleInvite,
   getCirclePendingInvites,
@@ -13,6 +13,12 @@ import {
   MIN_PLAYERS_PER_CIRCLE,
   DEFAULT_MAX_CIRCLE_MEMBERS,
 } from '../services/groupChallengeService';
+import {
+  createInCircleBattle,
+  sendBattleRequest,
+  getBattleRequestsForCircle,
+  respondBattleRequest,
+} from '../services/battleZoneService';
 import { findUser } from '../services/dbService';
 import PublicProfileModal from './PublicProfileModal';
 import TeamFormationView from './TeamFormationView';
@@ -23,6 +29,7 @@ export default function CircleDetailsView({
   currentUser,
   onBack,
   onCircleDeleted,
+  onNavigate,
 }) {
   const [circle, setCircle] = useState(() => (circleId ? getCircleById(circleId) : null));
   const [loading, setLoading] = useState(() => !circle);
@@ -30,6 +37,13 @@ export default function CircleDetailsView({
   const [copiedCodeToast, setCopiedCodeToast] = useState(false);
   const [copiedLinkToast, setCopiedLinkToast] = useState(false);
   const [isFormingTeams, setIsFormingTeams] = useState(false);
+
+  // Battle Zone States
+  const [showChallengeModal, setShowChallengeModal] = useState(false);
+  const [challengeTargetInput, setChallengeTargetInput] = useState('');
+  const [challengeError, setChallengeError] = useState(null);
+  const [challengeSuccessToast, setChallengeSuccessToast] = useState(null);
+  const [incomingBattleRequests, setIncomingBattleRequests] = useState(() => (circleId ? getBattleRequestsForCircle(circleId) : []));
 
   // Modals
   const [showInviteModal, setShowInviteModal] = useState(false);
@@ -70,6 +84,12 @@ export default function CircleDetailsView({
 
   useEffect(() => {
     reloadCircle();
+    const interval = setInterval(reloadCircle, 3000);
+    window.addEventListener('focus', reloadCircle);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('focus', reloadCircle);
+    };
   }, [reloadCircle]);
 
   const isAdmin = useMemo(() => {
@@ -165,9 +185,9 @@ export default function CircleDetailsView({
     }
   };
 
-  const handleRemoveMember = () => {
+  const handleRemoveMember = async () => {
     if (!memberToRemove || !isAdmin) return;
-    const res = removeMemberFromCircle(currentUser.username, circle.id, memberToRemove.username);
+    const res = await removeMemberFromCircleAsync(currentUser.username, circle.id, memberToRemove.username);
     if (res.success) {
       setMemberToRemove(null);
       reloadCircle();
@@ -176,9 +196,9 @@ export default function CircleDetailsView({
     }
   };
 
-  const handleLeaveCircle = () => {
+  const handleLeaveCircle = async () => {
     if (!currentUser || !circle) return;
-    const res = leaveCircle(currentUser.username, circle.id);
+    const res = await leaveCircleAsync(currentUser.username, circle.id);
     if (res.success) {
       setShowLeaveModal(false);
       onBack?.();
@@ -234,6 +254,18 @@ export default function CircleDetailsView({
     );
   }
 
+  if (!loading && !isMember && !isAdmin) {
+    return (
+      <div className="cd-not-found-card">
+        <h2>You are no longer in this Circle</h2>
+        <p>You have been removed from this circle or it has been deleted by the admin.</p>
+        <button type="button" className="spherical-btn" onClick={onBack}>
+          ← Back to Circles
+        </button>
+      </div>
+    );
+  }
+
   // If in Team Formation Mode (Stage 3)
   if (isFormingTeams) {
     return (
@@ -244,11 +276,74 @@ export default function CircleDetailsView({
         onChallengeCreated={(challenge) => {
           setIsFormingTeams(false);
           reloadCircle();
-          alert(`Challenge match lobby created for ${circle.name}! Teams formed: ${challenge.teams.teamA.name} vs ${challenge.teams.teamB.name}. Stage 3 complete!`);
+          const bRes = createInCircleBattle(
+            circle.id,
+            currentUser.username,
+            challenge.teams.teamA,
+            challenge.teams.teamB,
+            {
+              totalRounds: 1,
+              solvingTimeMinutes: challenge.timeLimitMinutes || 15,
+            }
+          );
+          if (bRes.success && bRes.battle) {
+            onNavigate?.(`battle-zone/${bRes.battle.id}`);
+          } else {
+            alert(`Challenge match lobby created for ${circle.name}! Teams formed: ${challenge.teams.teamA.name} vs ${challenge.teams.teamB.name}.`);
+          }
         }}
       />
     );
   }
+
+  const handleQuickLaunchInCircleBattle = () => {
+    if (!circle || !currentUser?.username) return;
+    const members = circle.members || [];
+    if (members.length < 4) {
+      alert(`Need at least 4 members to start an in-circle battle. Currently have ${members.length}.`);
+      return;
+    }
+    const mid = Math.ceil(members.length / 2);
+    const teamAMembers = members.slice(0, mid);
+    const teamBMembers = members.slice(mid);
+
+    const bRes = createInCircleBattle(
+      circle.id,
+      currentUser.username,
+      { name: `${circle.name} Alpha`, members: teamAMembers },
+      { name: `${circle.name} Beta`, members: teamBMembers },
+      { totalRounds: 1, solvingTimeMinutes: 15 }
+    );
+
+    if (bRes.success && bRes.battle) {
+      onNavigate?.(`battle-zone/${bRes.battle.id}`);
+    } else {
+      alert(bRes.error || 'Failed to initialize in-circle battle.');
+    }
+  };
+
+  const handleSendChallengeToCircle = (e) => {
+    e.preventDefault();
+    if (!challengeTargetInput.trim()) return;
+    setChallengeError(null);
+    const res = sendBattleRequest(circle.id, challengeTargetInput.trim(), currentUser.username);
+    if (!res.success) {
+      setChallengeError(res.error);
+    } else {
+      setShowChallengeModal(false);
+      setChallengeTargetInput('');
+      setChallengeSuccessToast(`Battle request sent to "${res.request.toCircleName}"! When their admin accepts, the battle will start.`);
+      setTimeout(() => setChallengeSuccessToast(null), 5000);
+    }
+  };
+
+  const handleRespondBattleRequest = (requestId, accept) => {
+    const res = respondBattleRequest(requestId, currentUser.username, accept);
+    setIncomingBattleRequests(getBattleRequestsForCircle(circle.id));
+    if (accept && res.battle) {
+      onNavigate?.(`battle-zone/${res.battle.id}`);
+    }
+  };
 
   const memberCount = circle.members?.length || 0;
   const maxCapacity = circle.maxMembers || DEFAULT_MAX_CIRCLE_MEMBERS;
@@ -350,6 +445,74 @@ export default function CircleDetailsView({
           </div>
         </div>
 
+        {/* Incoming Battle Request Alert */}
+        {incomingBattleRequests.length > 0 && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(80, 25, 20, 0.95), rgba(45, 15, 12, 0.95))',
+              border: '1px solid rgba(255, 180, 150, 0.45)',
+              borderRadius: '12px',
+              padding: '14px 20px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: '16px',
+              gap: '14px',
+              boxShadow: '0 4px 24px rgba(0, 0, 0, 0.5)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <span style={{ fontSize: '24px' }}>⚔️</span>
+              <div>
+                <span style={{ fontSize: '15px', fontWeight: '800', color: '#ffffff', display: 'block' }}>
+                  Battle Challenge from {incomingBattleRequests[0].fromCircleName}!
+                </span>
+                <span style={{ fontSize: '13px', color: '#ffcfbe' }}>
+                  Admin @{incomingBattleRequests[0].fromAdminUsername} has challenged your circle to a live code battle!
+                </span>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                type="button"
+                className="spherical-btn spherical-btn-primary spherical-btn-sm"
+                onClick={() => handleRespondBattleRequest(incomingBattleRequests[0].id, true)}
+              >
+                Accept Battle ⚔️
+              </button>
+              <button
+                type="button"
+                className="spherical-btn spherical-btn-sm"
+                onClick={() => handleRespondBattleRequest(incomingBattleRequests[0].id, false)}
+              >
+                Decline
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Challenge Success Toast */}
+        {challengeSuccessToast && (
+          <div
+            style={{
+              background: 'linear-gradient(135deg, rgba(46, 125, 50, 0.9), rgba(27, 94, 32, 0.9))',
+              border: '1px solid rgba(129, 199, 132, 0.5)',
+              borderRadius: '12px',
+              padding: '12px 18px',
+              color: '#ffffff',
+              fontWeight: 600,
+              fontSize: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '10px',
+              marginBottom: '16px',
+            }}
+          >
+            <span>⚔️</span>
+            <span>{challengeSuccessToast}</span>
+          </div>
+        )}
+
         {/* Challenge Eligibility Readiness Banner */}
         <div className={`cd-readiness-banner ${hasMinPlayers ? 'is-ready' : 'needs-players'}`}>
           <div className="cd-readiness-icon-wrap">
@@ -384,12 +547,38 @@ export default function CircleDetailsView({
               <button
                 type="button"
                 className="spherical-btn spherical-btn-primary"
+                style={{ background: 'linear-gradient(135deg, #a45338, #6d3322)' }}
+                onClick={handleQuickLaunchInCircleBattle}
+                title="Launch Live Split-Screen Code Battle"
+              >
+                <span>⚔️ Battle Zone</span>
+              </button>
+            )}
+
+            {hasMinPlayers && isAdmin && (
+              <button
+                type="button"
+                className="spherical-btn"
                 onClick={() => setIsFormingTeams(true)}
               >
                 <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2.5">
                   <polygon points="5 3 19 12 5 21 5 3" />
                 </svg>
-                <span>Start Challenge</span>
+                <span>Form Teams</span>
+              </button>
+            )}
+
+            {isAdmin && memberCount >= 2 && (
+              <button
+                type="button"
+                className="spherical-btn"
+                onClick={() => {
+                  setChallengeError(null);
+                  setShowChallengeModal(true);
+                }}
+                title="Challenge another circle to a code battle"
+              >
+                <span>⚔️ Challenge Circle</span>
               </button>
             )}
 
@@ -860,6 +1049,59 @@ export default function CircleDetailsView({
           onClose={() => setViewingProfileUsername(null)}
           onInviteSent={() => reloadCircle()}
         />
+      )}
+
+      {/* Challenge Another Circle Modal */}
+      {showChallengeModal && (
+        <div className="cd-modal-overlay" onClick={() => setShowChallengeModal(false)}>
+          <div className="cd-modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="cd-modal-header">
+              <h2 className="cd-modal-title">⚔️ Challenge Another Circle</h2>
+              <button type="button" className="cd-modal-close" onClick={() => setShowChallengeModal(false)}>
+                ✕
+              </button>
+            </div>
+            <p className="cd-modal-body-text">
+              Enter the target circle name or invite code. Once their admin accepts, both circles will enter the live split-screen Battle Zone!
+            </p>
+
+            {challengeError && (
+              <p className="cd-error-text" style={{ margin: '8px 0' }}>{challengeError}</p>
+            )}
+
+            <form onSubmit={handleSendChallengeToCircle}>
+              <div className="cd-form-group">
+                <label className="cd-label">Target Circle Name or Circle Code</label>
+                <input
+                  type="text"
+                  className="cd-input"
+                  placeholder="e.g. Elite Coders, or 4A4NPU"
+                  value={challengeTargetInput}
+                  onChange={(e) => setChallengeTargetInput(e.target.value)}
+                  autoFocus
+                  required
+                />
+              </div>
+
+              <div className="cd-modal-footer">
+                <button
+                  type="button"
+                  className="spherical-btn"
+                  onClick={() => setShowChallengeModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="spherical-btn spherical-btn-primary"
+                  disabled={!challengeTargetInput.trim()}
+                >
+                  Send Battle Request ⚔️
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       )}
     </div>
   );

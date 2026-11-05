@@ -19,8 +19,11 @@ import {
   getUserCircles,
   joinCircleByCode,
   removeMemberFromCircle,
+  removeMemberFromCircleAsync,
   leaveCircle,
   deleteCircle,
+  deleteCircleAsync,
+  getDeletedCircleIds,
   updateCircleName,
   sendCircleInvite,
   inviteByEmail,
@@ -280,6 +283,26 @@ describe('Stage 2: Circle Management & Member Administration', () => {
       assert.equal(getCircleById(circle.id), null);
       assert.equal(getUserCircles('admin_alice').length, 0);
       assert.equal(getUserCircles('bob_coder').length, 0);
+      assert.equal(getDeletedCircleIds().includes(circle.id), true);
+    });
+
+    test('removeMemberFromCircleAsync and deleteCircleAsync synchronize correctly across users', async () => {
+      const circle = createCircle('admin_alice', 'Sync Circle');
+      joinCircleByCode('bob_coder', circle.inviteCode);
+      assert.equal(getUserCircles('bob_coder').length, 1);
+
+      // Async removal of member
+      const removeRes = await removeMemberFromCircleAsync('admin_alice', circle.id, 'bob_coder');
+      assert.equal(removeRes.success, true);
+      assert.equal(getUserCircles('bob_coder').length, 0);
+      assert.equal(getUserCircles('admin_alice').length, 1);
+
+      // Async deletion of circle
+      const delRes = await deleteCircleAsync('admin_alice', circle.id);
+      assert.equal(delRes.success, true);
+      assert.equal(getCircleById(circle.id), null);
+      assert.equal(getUserCircles('admin_alice').length, 0);
+      assert.equal(getDeletedCircleIds().includes(circle.id), true);
     });
   });
 

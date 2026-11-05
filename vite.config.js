@@ -20,6 +20,235 @@ function backendApiPlugin() {
 
   const CIRCLES_FILE = path.resolve(process.cwd(), 'circles_db.json');
   const INVITES_FILE = path.resolve(process.cwd(), 'invites_db.json');
+  const DELETED_CIRCLES_FILE = path.resolve(process.cwd(), 'deleted_circles_db.json');
+  const BATTLES_FILE = path.resolve(process.cwd(), 'battles_db.json');
+  const BATTLE_REQUESTS_FILE = path.resolve(process.cwd(), 'battle_requests_db.json');
+
+  function loadDeletedCirclesFromFile() {
+    try {
+      if (fs.existsSync(DELETED_CIRCLES_FILE)) {
+        const data = JSON.parse(fs.readFileSync(DELETED_CIRCLES_FILE, 'utf8'));
+        if (Array.isArray(data)) return data;
+      }
+    } catch (err) {
+      console.error('[Vite API] Error reading deleted circles DB file:', err);
+    }
+    return [];
+  }
+
+  function saveDeletedCirclesToFile(ids) {
+    try {
+      fs.writeFileSync(DELETED_CIRCLES_FILE, JSON.stringify(ids, null, 2), 'utf8');
+    } catch (err) {
+      console.error('[Vite API] Error saving deleted circles DB file:', err);
+    }
+  }
+
+  function loadBattlesFromFile() {
+    try {
+      if (fs.existsSync(BATTLES_FILE)) {
+        const data = JSON.parse(fs.readFileSync(BATTLES_FILE, 'utf8'));
+        if (Array.isArray(data)) return data;
+      }
+    } catch (err) {
+      console.error('[Vite API] Error reading battles DB file:', err);
+    }
+    return [];
+  }
+
+  function saveBattlesToFile(battles) {
+    try {
+      fs.writeFileSync(BATTLES_FILE, JSON.stringify(battles, null, 2), 'utf8');
+    } catch (err) {
+      console.error('[Vite API] Error saving battles DB file:', err);
+    }
+  }
+
+  function loadBattleRequestsFromFile() {
+    try {
+      if (fs.existsSync(BATTLE_REQUESTS_FILE)) {
+        const data = JSON.parse(fs.readFileSync(BATTLE_REQUESTS_FILE, 'utf8'));
+        if (Array.isArray(data)) return data;
+      }
+    } catch (err) {
+      console.error('[Vite API] Error reading battle requests DB file:', err);
+    }
+    return [];
+  }
+
+  function saveBattleRequestsToFile(requests) {
+    try {
+      fs.writeFileSync(BATTLE_REQUESTS_FILE, JSON.stringify(requests, null, 2), 'utf8');
+    } catch (err) {
+      console.error('[Vite API] Error saving battle requests DB file:', err);
+    }
+  }
+
+  const battleSSEConnections = new Map();
+
+  function broadcastBattleEvent(battleId, eventData) {
+    const listeners = battleSSEConnections.get(battleId);
+    if (listeners && listeners.size > 0) {
+      const payload = `data: ${JSON.stringify(eventData)}\n\n`;
+      for (const clientRes of listeners) {
+        try {
+          clientRes.write(payload);
+        } catch {
+          listeners.delete(clientRes);
+        }
+      }
+    }
+  }
+
+  function sanitizeBattleForUser(battle, username) {
+    if (!battle) return null;
+    const clean = (username || '').trim().toLowerCase().replace(/^@/, '');
+    const isTeamAMember = battle.teams?.teamA?.members?.some((m) => m.username?.toLowerCase() === clean);
+    const isTeamBMember = battle.teams?.teamB?.members?.some((m) => m.username?.toLowerCase() === clean);
+    const isSpectator = !isTeamAMember && !isTeamBMember;
+    const userTeamKey = isTeamAMember ? 'teamA' : isTeamBMember ? 'teamB' : null;
+    const isBattleFinished = battle.phase === 'FINISHED';
+
+    const clone = JSON.parse(JSON.stringify(battle));
+
+    if (!isBattleFinished) {
+      if (userTeamKey === 'teamA') {
+        clone.teams.teamB.code = '// Opponent code is hidden to ensure fair competition';
+        clone.teams.teamB.output = '';
+        for (const r of clone.rounds || []) {
+          if (r.teamBChallenge) {
+            r.teamBChallenge.referenceSolution = '[Protected]';
+            r.teamBChallenge.testCases = (r.teamBChallenge.testCases || []).filter((tc) => tc.isSample);
+          }
+        }
+      } else if (userTeamKey === 'teamB') {
+        clone.teams.teamA.code = '// Opponent code is hidden to ensure fair competition';
+        clone.teams.teamA.output = '';
+        for (const r of clone.rounds || []) {
+          if (r.teamAChallenge) {
+            r.teamAChallenge.referenceSolution = '[Protected]';
+            r.teamAChallenge.testCases = (r.teamAChallenge.testCases || []).filter((tc) => tc.isSample);
+          }
+        }
+      } else if (isSpectator && !battle.settings?.allowSpectators) {
+        clone.teams.teamA.code = '// Spectator view disabled by match admin';
+        clone.teams.teamB.code = '// Spectator view disabled by match admin';
+      }
+    }
+
+    clone.viewer = {
+      username: clean,
+      isTeamAMember,
+      isTeamBMember,
+      isSpectator,
+      teamKey: userTeamKey,
+    };
+
+    return clone;
+  }
+
+  function checkAndUpdateBattleTimeouts(battle) {
+    if (!battle || !battle.phaseEndTime) return false;
+    const now = Date.now();
+    const end = new Date(battle.phaseEndTime).getTime();
+    if (now < end) return false;
+
+    const currentRound = battle.rounds[battle.currentRound - 1];
+
+    if (battle.phase === 'AUTHORING') {
+      if (!currentRound.teamAChallenge?.published) {
+        currentRound.teamAChallenge = {
+          id: `fb_${Date.now()}_teamA`,
+          authorTeam: 'teamA',
+          authorUsername: 'CodeLife Auto-Judge',
+          title: 'Two Sum Problem',
+          description: 'Given an array of integers and target, find two numbers summing to target.',
+          constraints: 'Time limit: 2s, Memory: 128MB',
+          type: 'from_scratch',
+          language: battle.language,
+          starterCode: '# Python 3\ndef solve():\n    pass\n',
+          referenceSolution: '# Solution\n',
+          testCases: [{ id: 'tc_1', input: '2 7 11 15\n9', expectedOutput: '0 1', isSample: true, isHidden: false }],
+          published: true,
+          isFallback: true,
+        };
+        battle.teams.teamA.status = 'submitted';
+      }
+      if (!currentRound.teamBChallenge?.published) {
+        currentRound.teamBChallenge = {
+          id: `fb_${Date.now()}_teamB`,
+          authorTeam: 'teamB',
+          authorUsername: 'CodeLife Auto-Judge',
+          title: 'Palindrome Number',
+          description: 'Determine whether an integer is a palindrome without converting to string.',
+          constraints: 'Time limit: 2s, Memory: 128MB',
+          type: 'from_scratch',
+          language: battle.language,
+          starterCode: '# Python 3\ndef solve():\n    pass\n',
+          referenceSolution: '# Solution\n',
+          testCases: [{ id: 'tc_1', input: '121', expectedOutput: 'true', isSample: true, isHidden: false }],
+          published: true,
+          isFallback: true,
+        };
+        battle.teams.teamB.status = 'submitted';
+      }
+
+      const swapSeconds = battle.settings?.swapCountdownSeconds || 5;
+      battle.phase = 'SWAP';
+      battle.phaseStartedAt = new Date(now).toISOString();
+      battle.phaseDurationSeconds = swapSeconds;
+      battle.phaseEndTime = new Date(now + swapSeconds * 1000).toISOString();
+      return true;
+    }
+
+    if (battle.phase === 'SWAP') {
+      const solvingSeconds = (battle.settings?.solvingTimeMinutes || 15) * 60;
+      battle.phase = 'SOLVING';
+      battle.phaseStartedAt = new Date(now).toISOString();
+      battle.phaseDurationSeconds = solvingSeconds;
+      battle.phaseEndTime = new Date(now + solvingSeconds * 1000).toISOString();
+      battle.teams.teamA.status = 'writing';
+      battle.teams.teamB.status = 'writing';
+      if (currentRound.teamBChallenge?.starterCode) {
+        battle.teams.teamA.code = currentRound.teamBChallenge.starterCode;
+      }
+      if (currentRound.teamAChallenge?.starterCode) {
+        battle.teams.teamB.code = currentRound.teamAChallenge.starterCode;
+      }
+      return true;
+    }
+
+    if (battle.phase === 'SOLVING') {
+      battle.phase = 'ROUND_RESULT';
+      battle.phaseStartedAt = new Date(now).toISOString();
+      battle.phaseDurationSeconds = 15;
+      battle.phaseEndTime = new Date(now + 15 * 1000).toISOString();
+
+      const teamAPassed = Boolean(currentRound.teamASubmission?.allPassed);
+      const teamBPassed = Boolean(currentRound.teamBSubmission?.allPassed);
+      let roundWinner = 'tie';
+      if (teamAPassed && !teamBPassed) roundWinner = 'teamA';
+      else if (teamBPassed && !teamAPassed) roundWinner = 'teamB';
+      else if (teamAPassed && teamBPassed) {
+        const timeA = currentRound.teamASubmission?.solveTimeSeconds || 999999;
+        const timeB = currentRound.teamBSubmission?.solveTimeSeconds || 999999;
+        if (timeA < timeB) roundWinner = 'teamA';
+        else if (timeB < timeA) roundWinner = 'teamB';
+      }
+
+      currentRound.result = {
+        winner: roundWinner,
+        teamAPassed,
+        teamBPassed,
+        teamAScore: battle.teams.teamA.score,
+        teamBScore: battle.teams.teamB.score,
+      };
+      currentRound.status = 'completed';
+      return true;
+    }
+
+    return false;
+  }
 
   function loadCirclesFromFile() {
     try {
@@ -843,6 +1072,256 @@ function backendApiPlugin() {
             }
 
             return res.end(JSON.stringify({ success: true }));
+          }
+
+          // -----------------------------------------------------------------
+          // 4.5. Battle Zone Endpoints
+          // -----------------------------------------------------------------
+          const eventsMatch = pathname.match(/^\/api\/battles\/([^/]+)\/events$/);
+          if (eventsMatch && req.method === 'GET') {
+            const battleId = eventsMatch[1];
+            res.writeHead(200, {
+              'Content-Type': 'text/event-stream',
+              'Cache-Control': 'no-cache',
+              Connection: 'keep-alive',
+            });
+            res.write(`data: ${JSON.stringify({ type: 'connected', battleId })}\n\n`);
+
+            if (!battleSSEConnections.has(battleId)) {
+              battleSSEConnections.set(battleId, new Set());
+            }
+            const set = battleSSEConnections.get(battleId);
+            set.add(res);
+
+            const heartbeat = setInterval(() => {
+              try {
+                res.write(': keep-alive\n\n');
+              } catch {
+                clearInterval(heartbeat);
+                set.delete(res);
+              }
+            }, 15000);
+
+            req.on('close', () => {
+              clearInterval(heartbeat);
+              set.delete(res);
+              if (set.size === 0) battleSSEConnections.delete(battleId);
+            });
+            return;
+          }
+
+          const battleReqCircleMatch = pathname.match(/^\/api\/battles\/requests\/([^/]+)$/);
+          if (battleReqCircleMatch && req.method === 'GET') {
+            const circleId = battleReqCircleMatch[1];
+            const all = loadBattleRequestsFromFile();
+            const filtered = all.filter((r) => r.toCircleId === circleId && r.status === 'pending');
+            return res.end(JSON.stringify({ success: true, requests: filtered }));
+          }
+
+          const respondReqMatch = pathname.match(/^\/api\/battles\/requests\/([^/]+)\/respond$/);
+          if (respondReqMatch && req.method === 'POST') {
+            const requestId = respondReqMatch[1];
+            const { accept } = await parseJsonBody(req);
+            const all = loadBattleRequestsFromFile();
+            const idx = all.findIndex((r) => r.id === requestId);
+            if (idx === -1) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ error: 'Request not found' }));
+            }
+            all[idx].status = accept ? 'accepted' : 'declined';
+            saveBattleRequestsToFile(all);
+            return res.end(JSON.stringify({ success: true, request: all[idx] }));
+          }
+
+          if (pathname === '/api/battles/requests' && req.method === 'POST') {
+            const reqData = await parseJsonBody(req);
+            if (!reqData || !reqData.fromCircleId || !reqData.toCircleId) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'Valid request data required' }));
+            }
+            const all = loadBattleRequestsFromFile();
+            all.unshift(reqData);
+            saveBattleRequestsToFile(all);
+            return res.end(JSON.stringify({ success: true, request: reqData }));
+          }
+
+          const settingsMatch = pathname.match(/^\/api\/battles\/([^/]+)\/settings$/);
+          if (settingsMatch && req.method === 'POST') {
+            const battleId = settingsMatch[1];
+            const { username, updates } = await parseJsonBody(req);
+            const battles = loadBattlesFromFile();
+            const battle = battles.find((b) => b.id === battleId);
+            if (!battle) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ error: 'Battle not found' }));
+            }
+            if (updates) {
+              battle.settings = { ...battle.settings, ...updates };
+              if (updates.language) battle.language = updates.language;
+              battle.teams.teamA.captainReady = false;
+              battle.teams.teamB.captainReady = false;
+            }
+            saveBattlesToFile(battles);
+            broadcastBattleEvent(battleId, { type: 'settings_updated', battle, updatedBy: username });
+            return res.end(JSON.stringify({ success: true, battle }));
+          }
+
+          const readyMatch = pathname.match(/^\/api\/battles\/([^/]+)\/ready$/);
+          if (readyMatch && req.method === 'POST') {
+            const battleId = readyMatch[1];
+            const { teamKey, isReady } = await parseJsonBody(req);
+            const battles = loadBattlesFromFile();
+            const battle = battles.find((b) => b.id === battleId);
+            if (!battle) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ error: 'Battle not found' }));
+            }
+            if (battle.teams[teamKey]) {
+              battle.teams[teamKey].captainReady = Boolean(isReady);
+            }
+            saveBattlesToFile(battles);
+            broadcastBattleEvent(battleId, { type: 'captain_ready', teamKey, isReady, battle });
+            return res.end(JSON.stringify({ success: true, battle }));
+          }
+
+          const startMatch = pathname.match(/^\/api\/battles\/([^/]+)\/start$/);
+          if (startMatch && req.method === 'POST') {
+            const battleId = startMatch[1];
+            const battles = loadBattlesFromFile();
+            const battle = battles.find((b) => b.id === battleId);
+            if (!battle) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ error: 'Battle not found' }));
+            }
+            const authoringDurationSeconds = (battle.settings?.authoringTimeMinutes || 10) * 60;
+            const now = Date.now();
+            battle.phase = 'AUTHORING';
+            battle.phaseStartedAt = new Date(now).toISOString();
+            battle.phaseDurationSeconds = authoringDurationSeconds;
+            battle.phaseEndTime = new Date(now + authoringDurationSeconds * 1000).toISOString();
+            battle.teams.teamA.status = 'writing';
+            battle.teams.teamB.status = 'writing';
+            saveBattlesToFile(battles);
+            broadcastBattleEvent(battleId, { type: 'phase_change', phase: 'AUTHORING', battle });
+            return res.end(JSON.stringify({ success: true, battle }));
+          }
+
+          const syncCodeMatch = pathname.match(/^\/api\/battles\/([^/]+)\/sync-code$/);
+          if (syncCodeMatch && req.method === 'POST') {
+            const battleId = syncCodeMatch[1];
+            const { username, teamKey, code, stdin } = await parseJsonBody(req);
+            const battles = loadBattlesFromFile();
+            const battle = battles.find((b) => b.id === battleId);
+            if (!battle) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ error: 'Battle not found' }));
+            }
+            if (battle.teams[teamKey]) {
+              battle.teams[teamKey].code = code;
+              if (stdin !== undefined) battle.teams[teamKey].stdin = stdin;
+              battle.teams[teamKey].status = 'writing';
+            }
+            saveBattlesToFile(battles);
+            broadcastBattleEvent(battleId, { type: 'code_sync', teamKey, code, user: username });
+            return res.end(JSON.stringify({ success: true }));
+          }
+
+          const challengeMatch = pathname.match(/^\/api\/battles\/([^/]+)\/challenge$/);
+          if (challengeMatch && req.method === 'POST') {
+            const battleId = challengeMatch[1];
+            const { teamKey, challenge } = await parseJsonBody(req);
+            const battles = loadBattlesFromFile();
+            const battle = battles.find((b) => b.id === battleId);
+            if (!battle) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ error: 'Battle not found' }));
+            }
+            const currentRound = battle.rounds[battle.currentRound - 1];
+            if (teamKey === 'teamA') {
+              currentRound.teamAChallenge = challenge;
+              battle.teams.teamA.status = 'submitted';
+            } else {
+              currentRound.teamBChallenge = challenge;
+              battle.teams.teamB.status = 'submitted';
+            }
+            if (currentRound.teamAChallenge?.published && currentRound.teamBChallenge?.published) {
+              const swapSeconds = battle.settings?.swapCountdownSeconds || 5;
+              const now = Date.now();
+              battle.phase = 'SWAP';
+              battle.phaseStartedAt = new Date(now).toISOString();
+              battle.phaseDurationSeconds = swapSeconds;
+              battle.phaseEndTime = new Date(now + swapSeconds * 1000).toISOString();
+            }
+            saveBattlesToFile(battles);
+            broadcastBattleEvent(battleId, { type: 'challenge_published', teamKey, phase: battle.phase, battle });
+            return res.end(JSON.stringify({ success: true, battle }));
+          }
+
+          const submitMatch = pathname.match(/^\/api\/battles\/([^/]+)\/submit$/);
+          if (submitMatch && req.method === 'POST') {
+            const battleId = submitMatch[1];
+            const { teamKey, submission } = await parseJsonBody(req);
+            const battles = loadBattlesFromFile();
+            const battle = battles.find((b) => b.id === battleId);
+            if (!battle) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ error: 'Battle not found' }));
+            }
+            const currentRound = battle.rounds[battle.currentRound - 1];
+            const team = battle.teams[teamKey];
+            if (teamKey === 'teamA') {
+              currentRound.teamASubmission = submission;
+            } else {
+              currentRound.teamBSubmission = submission;
+            }
+            if (submission.allPassed) {
+              team.status = 'passed';
+              team.score += 1;
+              team.totalSolveTimeSeconds += submission.solveTimeSeconds || 0;
+            } else {
+              team.status = 'failed';
+              team.wrongSubmissionsCount += 1;
+            }
+            if (currentRound.teamASubmission?.allPassed && currentRound.teamBSubmission?.allPassed) {
+              checkAndUpdateBattleTimeouts(battle);
+            }
+            saveBattlesToFile(battles);
+            broadcastBattleEvent(battleId, { type: 'submission_result', teamKey, allPassed: submission.allPassed, battle });
+            return res.end(JSON.stringify({ success: true, battle }));
+          }
+
+          const singleBattleMatch = pathname.match(/^\/api\/battles\/([^/]+)$/);
+          if (singleBattleMatch && req.method === 'GET') {
+            const battleId = singleBattleMatch[1];
+            const username = parsedUrl.searchParams.get('username');
+            const battles = loadBattlesFromFile();
+            const battle = battles.find((b) => b.id === battleId);
+            if (!battle) {
+              res.statusCode = 404;
+              return res.end(JSON.stringify({ error: 'Battle not found' }));
+            }
+            const updated = checkAndUpdateBattleTimeouts(battle);
+            if (updated) {
+              saveBattlesToFile(battles);
+              broadcastBattleEvent(battleId, { type: 'phase_change', phase: battle.phase, battle });
+            }
+            const sanitized = sanitizeBattleForUser(battle, username);
+            return res.end(JSON.stringify({ success: true, battle: sanitized }));
+          }
+
+          if (pathname === '/api/battles' && req.method === 'POST') {
+            const battle = await parseJsonBody(req);
+            if (!battle || !battle.id) {
+              res.statusCode = 400;
+              return res.end(JSON.stringify({ error: 'Valid battle object required' }));
+            }
+            const battles = loadBattlesFromFile();
+            const idx = battles.findIndex((b) => b.id === battle.id);
+            if (idx !== -1) battles[idx] = battle;
+            else battles.unshift(battle);
+            saveBattlesToFile(battles);
+            broadcastBattleEvent(battle.id, { type: 'battle_created', battle });
+            return res.end(JSON.stringify({ success: true, battle }));
           }
 
           // -----------------------------------------------------------------

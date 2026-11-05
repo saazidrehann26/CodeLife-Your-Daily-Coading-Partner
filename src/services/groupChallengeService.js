@@ -279,6 +279,47 @@ export const MIN_PLAYERS_PER_CIRCLE = 4; // 2 teams x minimum 2 players
 export const MIN_TEAM_SIZE = 2;
 
 const STORAGE_KEY_ALL_CIRCLES = 'codelife_group_all_circles';
+const STORAGE_KEY_DELETED_CIRCLES = 'codelife_group_deleted_circles';
+
+/**
+ * Get IDs of deleted circles to prevent resurrection across devices/tabs
+ * @returns {Array<string>}
+ */
+export function getDeletedCircleIds() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY_DELETED_CIRCLES);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch {
+    // storage fallback
+  }
+  return [];
+}
+
+/**
+ * Save IDs of deleted circles
+ * @param {Array<string>} ids 
+ */
+export function saveDeletedCircleIds(ids) {
+  try {
+    localStorage.setItem(STORAGE_KEY_DELETED_CIRCLES, JSON.stringify(ids));
+  } catch {
+    // storage fallback
+  }
+}
+
+/**
+ * Mark a circle as deleted locally
+ * @param {string} circleId 
+ */
+export function markCircleDeletedLocally(circleId) {
+  if (!circleId) return;
+  const current = new Set(getDeletedCircleIds());
+  current.add(circleId);
+  saveDeletedCircleIds(Array.from(current));
+}
 
 /**
  * Get all circles from centralized storage
@@ -629,7 +670,9 @@ export async function joinCircleByCodeAsync(username, inviteCode) {
 export async function syncCirclesAndInvitesAsync(username) {
   if (typeof window === 'undefined' || !window.navigator?.onLine) return;
   try {
-    const local = getAllCircles();
+    const deletedIds = new Set(getDeletedCircleIds());
+    let local = getAllCircles().filter((c) => c && c.id && !deletedIds.has(c.id));
+    saveAllCircles(local);
     let synced = false;
 
     // 1. Two-way sync: push local circles to server and pull latest server circles
@@ -637,12 +680,20 @@ export async function syncCirclesAndInvitesAsync(username) {
       const syncRes = await fetch('/api/circles/sync', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ circles: local }),
+        body: JSON.stringify({
+          circles: local,
+          deletedCircleIds: Array.from(deletedIds),
+        }),
       });
       if (syncRes.ok) {
         const data = await syncRes.json();
+        if (Array.isArray(data.deletedCircleIds)) {
+          data.deletedCircleIds.forEach((id) => deletedIds.add(id));
+          saveDeletedCircleIds(Array.from(deletedIds));
+        }
         if (Array.isArray(data.circles)) {
-          saveAllCircles(data.circles);
+          const cleanServerCircles = data.circles.filter((c) => c && c.id && !deletedIds.has(c.id));
+          saveAllCircles(cleanServerCircles);
           synced = true;
         }
       }
@@ -655,17 +706,19 @@ export async function syncCirclesAndInvitesAsync(username) {
       const circlesRes = await fetch('/api/circles');
       if (circlesRes.ok) {
         const data = await circlesRes.json();
-        if (Array.isArray(data.circles) && data.circles.length > 0) {
-          const map = new Map();
-          for (const c of local) map.set(c.id, c);
-          for (const c of data.circles) map.set(c.id, c);
-          saveAllCircles(Array.from(map.values()));
+        if (Array.isArray(data.deletedCircleIds)) {
+          data.deletedCircleIds.forEach((id) => deletedIds.add(id));
+          saveDeletedCircleIds(Array.from(deletedIds));
+        }
+        if (Array.isArray(data.circles)) {
+          const cleanServerCircles = data.circles.filter((c) => c && c.id && !deletedIds.has(c.id));
+          saveAllCircles(cleanServerCircles);
         }
       }
     }
 
     if (username) {
-      const clean = username.trim().toLowerCase();
+      const clean = username.trim().toLowerCase().replace(/^@/, '');
       saveUserCircles(clean, getUserCircles(clean));
       const invitesRes = await fetch(`/api/invites/${clean}`);
       if (invitesRes.ok) {
@@ -673,8 +726,16 @@ export async function syncCirclesAndInvitesAsync(username) {
         if (Array.isArray(data.invites)) {
           const localInvites = getPendingCircleInvites(clean);
           const map = new Map();
-          for (const inv of localInvites) map.set(inv.id, inv);
-          for (const inv of data.invites) map.set(inv.id, inv);
+          for (const inv of localInvites) {
+            if (inv && inv.circleId && !deletedIds.has(inv.circleId)) {
+              map.set(inv.id, inv);
+            }
+          }
+          for (const inv of data.invites) {
+            if (inv && inv.circleId && !deletedIds.has(inv.circleId)) {
+              map.set(inv.id, inv);
+            }
+          }
           savePendingCircleInvites(clean, Array.from(map.values()));
         }
       }
@@ -694,8 +755,8 @@ export function removeMemberFromCircle(adminUsername, circleId, targetUsername) 
   if (!adminUsername || !circleId || !targetUsername) {
     return { success: false, error: 'Missing required parameters.' };
   }
-  const cleanAdmin = adminUsername.trim().toLowerCase();
-  const cleanTarget = targetUsername.trim().toLowerCase();
+  const cleanAdmin = adminUsername.trim().toLowerCase().replace(/^@/, '');
+  const cleanTarget = targetUsername.trim().toLowerCase().replace(/^@/, '');
 
   const all = getAllCircles();
   const circleIndex = all.findIndex((c) => c.id === circleId);
@@ -704,7 +765,7 @@ export function removeMemberFromCircle(adminUsername, circleId, targetUsername) 
   }
 
   const circle = all[circleIndex];
-  if ((circle.adminUsername || '').toLowerCase() !== cleanAdmin) {
+  if ((circle.adminUsername || '').toLowerCase().replace(/^@/, '') !== cleanAdmin) {
     return { success: false, error: 'Only the circle admin can remove members.' };
   }
 
@@ -713,7 +774,7 @@ export function removeMemberFromCircle(adminUsername, circleId, targetUsername) 
   }
 
   const updatedMembers = (circle.members || []).filter(
-    (m) => (m.username || '').toLowerCase() !== cleanTarget
+    (m) => (m.username || '').toLowerCase().replace(/^@/, '') !== cleanTarget
   );
 
   const updatedCircle = {
@@ -729,25 +790,60 @@ export function removeMemberFromCircle(adminUsername, circleId, targetUsername) 
 }
 
 /**
+ * Remove a member from a circle and sync with backend / Supabase
+ */
+export async function removeMemberFromCircleAsync(adminUsername, circleId, targetUsername) {
+  const localRes = removeMemberFromCircle(adminUsername, circleId, targetUsername);
+  if (!localRes.success) return localRes;
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    try {
+      const res = await fetch('/api/circles/remove-member', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ adminUsername, circleId, targetUsername }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.circle) {
+          const all = getAllCircles();
+          const idx = all.findIndex((c) => c.id === data.circle.id);
+          if (idx !== -1) {
+            all[idx] = data.circle;
+            saveAllCircles(all);
+          }
+          const cleanTarget = targetUsername.trim().toLowerCase().replace(/^@/, '');
+          saveUserCircles(cleanTarget, getUserCircles(cleanTarget));
+        }
+      }
+    } catch (e) {
+      console.warn('Could not sync member removal to server:', e);
+    }
+  }
+
+  return localRes;
+}
+
+/**
  * Non-admin member leaves a circle
  * @param {string} username 
  * @param {string} circleId 
  */
 export function leaveCircle(username, circleId) {
   if (!username || !circleId) return { success: false, error: 'Missing parameters.' };
-  const cleanUser = username.trim().toLowerCase();
+  const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
 
   const all = getAllCircles();
   const circleIndex = all.findIndex((c) => c.id === circleId);
   if (circleIndex === -1) return { success: false, error: 'Circle not found.' };
 
   const circle = all[circleIndex];
-  if ((circle.adminUsername || '').toLowerCase() === cleanUser) {
+  if ((circle.adminUsername || '').toLowerCase().replace(/^@/, '') === cleanUser) {
     return { success: false, error: 'Admins cannot leave their own circle. You can delete the circle.' };
   }
 
   const updatedMembers = (circle.members || []).filter(
-    (m) => (m.username || '').toLowerCase() !== cleanUser
+    (m) => (m.username || '').toLowerCase().replace(/^@/, '') !== cleanUser
   );
 
   const updatedCircle = { ...circle, members: updatedMembers };
@@ -756,6 +852,41 @@ export function leaveCircle(username, circleId) {
   saveUserCircles(cleanUser, getUserCircles(cleanUser));
 
   return { success: true, circle: updatedCircle };
+}
+
+/**
+ * Member leaves a circle and syncs with backend / Supabase
+ */
+export async function leaveCircleAsync(username, circleId) {
+  const localRes = leaveCircle(username, circleId);
+  if (!localRes.success) return localRes;
+
+  if (typeof window !== 'undefined' && window.navigator?.onLine) {
+    try {
+      const res = await fetch('/api/circles/leave', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, circleId }),
+      });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (data.circle) {
+          const all = getAllCircles();
+          const idx = all.findIndex((c) => c.id === data.circle.id);
+          if (idx !== -1) {
+            all[idx] = data.circle;
+            saveAllCircles(all);
+          }
+          const cleanUser = username.trim().toLowerCase().replace(/^@/, '');
+          saveUserCircles(cleanUser, getUserCircles(cleanUser));
+        }
+      }
+    } catch (e) {
+      console.warn('Could not sync leave circle to server:', e);
+    }
+  }
+
+  return localRes;
 }
 
 /**
@@ -775,8 +906,31 @@ export function deleteCircle(adminUsername, circleId) {
     return { success: false, error: 'Only the circle admin can delete this circle.' };
   }
 
+  // Mark as permanently deleted
+  markCircleDeletedLocally(circleId);
+
   const updated = all.filter((c) => c.id !== circleId);
   saveAllCircles(updated);
+
+  // Clear from all cached user circle keys
+  try {
+    if (typeof localStorage !== 'undefined') {
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+        if (key && key.startsWith(`${STORAGE_KEY_CIRCLES}_`)) {
+          try {
+            const userCircles = JSON.parse(localStorage.getItem(key) || '[]');
+            if (Array.isArray(userCircles)) {
+              const filtered = userCircles.filter((c) => c.id !== circleId);
+              if (filtered.length !== userCircles.length) {
+                localStorage.setItem(key, JSON.stringify(filtered));
+              }
+            }
+          } catch {}
+        }
+      }
+    }
+  } catch {}
 
   // Clear pending invites referencing this circle across all users
   const allUsers = getUsers();
@@ -800,11 +954,19 @@ export async function deleteCircleAsync(adminUsername, circleId) {
 
   if (typeof window !== 'undefined' && window.navigator?.onLine) {
     try {
-      await fetch('/api/circles/delete', {
+      const res = await fetch('/api/circles/delete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ adminUsername, circleId }),
       });
+      if (res.ok) {
+        const data = await res.json().catch(() => ({}));
+        if (Array.isArray(data.deletedCircleIds)) {
+          const current = new Set(getDeletedCircleIds());
+          data.deletedCircleIds.forEach((id) => current.add(id));
+          saveDeletedCircleIds(Array.from(current));
+        }
+      }
     } catch (e) {
       console.warn('Could not sync circle deletion to server:', e);
     }
