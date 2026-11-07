@@ -1,1 +1,90 @@
-[]
+[
+  {
+    "id": "circle_1793982591939_yspzq",
+    "name": "Team 3SGM8Y",
+    "adminUsername": "captain_3sgm8y",
+    "maxMembers": 50,
+    "status": "No active match",
+    "createdAt": "2026-11-06T16:29:51.939Z",
+    "inviteCode": "3SGM8Y",
+    "category": "Competitive",
+    "description": "Opponent circle code 3SGM8Y",
+    "members": [
+      {
+        "username": "captain_3sgm8y",
+        "role": "admin",
+        "joinedAt": "2026-11-06T16:29:51.939Z"
+      }
+    ]
+  },
+  {
+    "adminUsername": "sazid",
+    "category": "General",
+    "createdAt": "2026-11-06T10:30:46.558Z",
+    "description": "",
+    "id": "circle_1793961046558_ayaij",
+    "inviteCode": "3SGM8Z",
+    "maxMembers": 50,
+    "members": [
+      {
+        "joinedAt": "2026-11-06T10:30:46.558Z",
+        "role": "admin",
+        "username": "sazid"
+      }
+    ],
+    "name": "this is test",
+    "status": "No active match"
+  },
+  {
+    "id": "circle_1793876922153_xovnh",
+    "name": "test",
+    "adminUsername": "sazid",
+    "maxMembers": 50,
+    "status": "No active match",
+    "createdAt": "2026-11-05T11:08:42.153Z",
+    "inviteCode": "UZL464",
+    "members": [
+      {
+        "username": "sazid",
+        "role": "admin",
+        "joinedAt": "2026-11-05T11:08:42.153Z"
+      }
+    ]
+  },
+  {
+    "id": "circle_seed_4a4npu",
+    "name": "Coding Circle",
+    "adminUsername": "sazid",
+    "maxMembers": 50,
+    "status": "No active match",
+    "createdAt": "2026-11-05T07:00:00.000Z",
+    "inviteCode": "4A4NPU",
+    "members": [
+      {
+        "username": "sazid",
+        "role": "admin",
+        "joinedAt": "2026-11-05T07:00:00.000Z"
+      }
+    ]
+  },
+  {
+    "adminUsername": "sazid",
+    "id": "circle_e2e_1793876527241",
+    "inviteCode": "ELITE1",
+    "maxMembers": 50,
+    "members": [
+      {
+        "joinedAt": "2026-11-05T11:02:07.241Z",
+        "role": "admin",
+        "username": "sazid"
+      },
+      {
+        "joinedAt": "2026-11-05T11:02:09.475Z",
+        "role": "member",
+        "username": "testuser1"
+      }
+    ],
+    "name": "Elite Coders",
+    "status": "No active match"
+  }
+]

@@ -1,1 +1,113 @@
-[]
+[
+  {
+    "id": "battle_1793982591940_5gdvu",
+    "format": "circle_vs_circle",
+    "createdBy": "sazid",
+    "circleAId": "circle_1793961046558_ayaij",
+    "circleAName": "this is test",
+    "circleBId": "circle_1793982591939_yspzq",
+    "circleBName": "Team 3SGM8Y",
+    "settings": {
+      "language": "Python",
+      "totalRounds": 1,
+      "authoringTimeMinutes": 10,
+      "solvingTimeMinutes": 15,
+      "swapCountdownSeconds": 5,
+      "challengeType": "from_scratch",
+      "flowMode": "simultaneous",
+      "allowSpectators": true,
+      "submissionPolicy": "captain_or_member",
+      "scoring": {
+        "pointsPerSolve": 1,
+        "timeBonusMaxPoints": 50,
+        "wrongSubmissionPenalty": 5,
+        "enableTimeBonus": true,
+        "enableWrongPenalty": true
+      }
+    },
+    "language": "Python",
+    "languageId": 71,
+    "currentRound": 1,
+    "totalRounds": 1,
+    "phase": "ROUND_RESULT",
+    "phaseStartedAt": "2026-11-06T16:44:52.104Z",
+    "phaseDurationSeconds": 15,
+    "phaseEndTime": "2026-11-06T16:45:07.104Z",
+    "teams": {
+      "teamA": {
+        "key": "teamA",
+        "name": "this is test",
+        "circleId": "circle_1793961046558_ayaij",
+        "circleName": "this is test",
+        "captainUsername": "sazid",
+        "captainReady": true,
+        "members": [
+          {
+            "username": "sazid",
+            "name": "sazid",
+            "role": "captain",
+            "online": true
+          }
+        ],
+        "score": 0,
+        "totalSolveTimeSeconds": 0,
+        "wrongSubmissionsCount": 0,
+        "status": "writing",
+        "code": "",
+        "stdin": "",
+        "output": ""
+      },
+      "teamB": {
+        "key": "teamB",
+        "name": "Team 3SGM8Y",
+        "circleId": "circle_1793982591939_yspzq",
+        "circleName": "Team 3SGM8Y",
+        "captainUsername": "captain_3sgm8y",
+        "captainReady": true,
+        "members": [
+          {
+            "username": "captain_3sgm8y",
+            "name": "captain_3sgm8y",
+            "role": "captain",
+            "online": true
+          }
+        ],
+        "score": 0,
+        "totalSolveTimeSeconds": 0,
+        "wrongSubmissionsCount": 0,
+        "status": "writing",
+        "code": "# Python 3 Solution\nimport sys\n\ndef solve():\n    # Read input from stdin\n    # line = sys.stdin.read().strip()\n    pass\n\nif __name__ == '__main__':\n    solve()\n",
+        "stdin": "",
+        "output": ""
+      }
+    },
+    "rounds": [
+      {
+        "roundNumber": 1,
+        "teamAChallenge": null,
+        "teamBChallenge": null,
+        "teamASubmission": null,
+        "teamBSubmission": null,
+        "result": {
+          "winner": "tie",
+          "teamAPassed": false,
+          "teamBPassed": false,
+          "teamAScore": 0,
+          "teamBScore": 0
+        },
+        "status": "completed"
+      }
+    ],
+    "events": [
+      {
+        "id": "ev_1793982591940",
+        "timestamp": "2026-11-06T16:29:51.940Z",
+        "type": "battle_created",
+        "message": "Circle-vs-Circle Battle created: this is test vs Team 3SGM8Y"
+      }
+    ],
+    "status": "active",
+    "winner": null,
+    "createdAt": "2026-11-06T16:29:51.940Z"
+  }
+]

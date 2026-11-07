@@ -13,14 +13,72 @@ import {
   runSolutionTest,
   submitSolution,
   advanceToNextRoundOrFinish,
+  updateBattleTime,
   getSanitizedBattleForUser,
   BATTLE_PHASES,
   CHALLENGE_TYPES,
   FLOW_MODES,
   SUPPORTED_BATTLE_LANGUAGES,
   getDefaultStarterCode,
+  createCircleVsCircleBattle,
 } from '../services/battleZoneService';
+import { getAllCircles, createCircle } from '../services/groupChallengeService';
 import './BattleZonePage.css';
+
+/**
+ * Curated challenge presets for quick problem exchange between opponent teams
+ */
+const QUICK_CHALLENGE_PRESETS = [
+  {
+    title: 'Reverse String',
+    description: 'Read a string from standard input and print the reversed string to standard output.',
+    constraints: '1 <= string length <= 1000. String contains printable ASCII characters.',
+    testCases: [
+      { id: 'tc_rev_1', input: 'hello', expectedOutput: 'olleh', isSample: true, isHidden: false },
+      { id: 'tc_rev_2', input: 'CodeLife', expectedOutput: 'efiLedoC', isSample: true, isHidden: false },
+      { id: 'tc_rev_3', input: 'racecar', expectedOutput: 'racecar', isSample: false, isHidden: true },
+    ],
+  },
+  {
+    title: 'Palindrome Checker',
+    description: 'Given a word or number from input, print "YES" if it reads the same backwards, otherwise print "NO".',
+    constraints: 'Input string length between 1 and 500.',
+    testCases: [
+      { id: 'tc_pal_1', input: 'radar', expectedOutput: 'YES', isSample: true, isHidden: false },
+      { id: 'tc_pal_2', input: 'codelife', expectedOutput: 'NO', isSample: true, isHidden: false },
+      { id: 'tc_pal_3', input: '12321', expectedOutput: 'YES', isSample: false, isHidden: true },
+    ],
+  },
+  {
+    title: 'Two Sum',
+    description: 'Given an integer target and an array of integers on the next line, print the 0-based indices of the two numbers that add up to target separated by space.',
+    constraints: '2 <= N <= 10^4. Exactly one valid pair exists.',
+    testCases: [
+      { id: 'tc_ts_1', input: '9\n2 7 11 15', expectedOutput: '0 1', isSample: true, isHidden: false },
+      { id: 'tc_ts_2', input: '6\n3 2 4', expectedOutput: '1 2', isSample: true, isHidden: false },
+      { id: 'tc_ts_3', input: '6\n3 3', expectedOutput: '0 1', isSample: false, isHidden: true },
+    ],
+  },
+  {
+    title: 'FizzBuzz',
+    description: 'Read a positive integer N. For numbers from 1 to N: print "FizzBuzz" if divisible by 3 and 5, "Fizz" if divisible by 3, "Buzz" if divisible by 5, or the number itself. Each on a new line.',
+    constraints: '1 <= N <= 100',
+    testCases: [
+      { id: 'tc_fb_1', input: '5', expectedOutput: '1\n2\nFizz\n4\nBuzz', isSample: true, isHidden: false },
+      { id: 'tc_fb_2', input: '3', expectedOutput: '1\n2\nFizz', isSample: true, isHidden: false },
+    ],
+  },
+  {
+    title: 'Find Maximum Element',
+    description: 'Read N integers from standard input separated by spaces or newlines and output the maximum element.',
+    constraints: '1 <= N <= 10^5, -10^9 <= value <= 10^9',
+    testCases: [
+      { id: 'tc_mx_1', input: '1 5 3 9 2', expectedOutput: '9', isSample: true, isHidden: false },
+      { id: 'tc_mx_2', input: '-10 -5 -20', expectedOutput: '-5', isSample: true, isHidden: false },
+      { id: 'tc_mx_3', input: '42', expectedOutput: '42', isSample: false, isHidden: true },
+    ],
+  },
+];
 
 /**
  * BattleZonePage
@@ -69,6 +127,35 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
 
   // Post-battle solution reveal toggle
   const [showRevealedSolutions, setShowRevealedSolutions] = useState(false);
+
+  // Connect Opponent Modal state
+  const [showConnectModal, setShowConnectModal] = useState(false);
+  const [opponentCircleCode, setOpponentCircleCode] = useState('');
+  const [chosenLanguage, setChosenLanguage] = useState('Python');
+  const [customBattleMinutes, setCustomBattleMinutes] = useState(15);
+  const [showTimeModal, setShowTimeModal] = useState(false);
+  const [arenaCustomMinutes, setArenaCustomMinutes] = useState(15);
+  const [connectError, setConnectError] = useState(null);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [copiedCode, setCopiedCode] = useState(false);
+
+  // Give Problem to Opponent drawer states
+  const [showGiveProblemA, setShowGiveProblemA] = useState(false);
+  const [showGiveProblemB, setShowGiveProblemB] = useState(false);
+  const [giveTitleA, setGiveTitleA] = useState('Reverse String');
+  const [giveDescA, setGiveDescA] = useState('Read a string from standard input and print the reversed string to standard output.');
+  const [giveConstraintsA, setGiveConstraintsA] = useState('1 <= string length <= 1000');
+  const [giveTestCasesA, setGiveTestCasesA] = useState([
+    { id: 'tc_1', input: 'hello', expectedOutput: 'olleh', isSample: true, isHidden: false },
+    { id: 'tc_2', input: 'codelife', expectedOutput: 'efiledoc', isSample: false, isHidden: true },
+  ]);
+  const [giveTitleB, setGiveTitleB] = useState('Two Sum');
+  const [giveDescB, setGiveDescB] = useState('Given target and numbers, print 0-based indices that add to target.');
+  const [giveConstraintsB, setGiveConstraintsB] = useState('2 <= N <= 10^4');
+  const [giveTestCasesB, setGiveTestCasesB] = useState([
+    { id: 'tc_1', input: '9\n2 7 11 15', expectedOutput: '0 1', isSample: true, isHidden: false },
+  ]);
+  const [problemSentNotice, setProblemSentNotice] = useState(null);
 
   // Real-time EventSource connection reference
   const sseRef = useRef(null);
@@ -185,7 +272,7 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
               }
               return updated;
             });
-          } else if (data.type === 'phase_change' || data.type === 'captain_ready' || data.type === 'challenge_published') {
+          } else if (data.type === 'phase_change' || data.type === 'captain_ready' || data.type === 'challenge_published' || data.type === 'time_updated') {
             void fetchBattleState();
           }
         } catch {
@@ -210,6 +297,17 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
       clearInterval(pollInterval);
     };
   }, [battleId, cleanUsername, fetchBattleState, viewerInfo.userTeamKey, viewerInfo.isSpectator]);
+
+  // Auto-advance if battle is in ROUND_RESULT on the final round so the final scoreboard is shown directly
+  useEffect(() => {
+    if (battle?.id && battle.phase === BATTLE_PHASES.ROUND_RESULT && battle.currentRound >= (battle.totalRounds || 1)) {
+      advanceToNextRoundOrFinish(battle.id);
+      const timer = setTimeout(() => {
+        void fetchBattleState();
+      }, 0);
+      return () => clearTimeout(timer);
+    }
+  }, [battle?.id, battle?.phase, battle?.currentRound, battle?.totalRounds, fetchBattleState]);
 
   // Countdown timer synced from server phaseEndTime
   useEffect(() => {
@@ -527,6 +625,408 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
   const teamAChallengeToSolve = currentRound?.teamBChallenge || null;
   const teamBChallengeToSolve = currentRound?.teamAChallenge || null;
 
+  const userCircle = useMemo(() => {
+    try {
+      const all = getAllCircles();
+      return (
+        all.find(
+          (c) =>
+            (c.adminUsername || '').toLowerCase() === cleanUsername ||
+            c.members?.some((m) => (m.username || '').toLowerCase() === cleanUsername)
+        ) || null
+      );
+    } catch {
+      return null;
+    }
+  }, [cleanUsername]);
+
+  // Language Change handler situated on compiler header
+  const handleLanguageChange = (newLang) => {
+    if (!battle) return;
+    const langId = newLang === 'Python' ? 71 : newLang === 'C' ? 50 : 54;
+    const updatedBattle = {
+      ...battle,
+      language: newLang,
+      languageId: langId,
+      settings: {
+        ...battle.settings,
+        language: newLang,
+      },
+    };
+
+    ['teamA', 'teamB'].forEach((tk) => {
+      if (updatedBattle.teams && updatedBattle.teams[tk]) {
+        const cur = (updatedBattle.teams[tk].code || '').trim();
+        if (
+          !cur ||
+          cur === getDefaultStarterCode('Python').trim() ||
+          cur === getDefaultStarterCode('C').trim() ||
+          cur === getDefaultStarterCode('C++').trim()
+        ) {
+          updatedBattle.teams[tk].code = getDefaultStarterCode(newLang);
+        }
+      }
+    });
+
+    setBattle(updatedBattle);
+    saveBattle(updatedBattle);
+
+    try {
+      fetch(`/api/battles/${encodeURIComponent(battle.id)}/settings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language: newLang }),
+      }).catch(() => {});
+    } catch {
+      // ignore
+    }
+  };
+
+  // Connect Opponent Team by Circle Code
+  const handleConnectOpponent = async (e) => {
+    if (e) e.preventDefault();
+    const code = opponentCircleCode.trim().toUpperCase();
+    if (!code) {
+      setConnectError('Please enter an opponent circle code.');
+      return;
+    }
+    setConnectError(null);
+    setIsConnecting(true);
+
+    try {
+      const allCircles = getAllCircles();
+      let myCircle = allCircles.find(
+        (c) =>
+          (c.adminUsername || '').toLowerCase() === cleanUsername ||
+          c.members?.some((m) => (m.username || '').toLowerCase() === cleanUsername)
+      );
+
+      if (!myCircle) {
+        const myCircleName = currentUser?.fullName ? `${currentUser.fullName}'s Circle` : `${cleanUsername}'s Circle`;
+        myCircle = createCircle(
+          cleanUsername,
+          myCircleName,
+          50,
+          null,
+          'Competitive',
+          'Auto-created circle for live duel battle'
+        );
+      }
+
+      if ((myCircle.inviteCode || '').toUpperCase() === code) {
+        setConnectError('You entered your own circle code. Please enter the opponent team circle code.');
+        setIsConnecting(false);
+        return;
+      }
+
+      let opponentCircle = allCircles.find(
+        (c) =>
+          (c.inviteCode || '').toUpperCase() === code ||
+          (c.id || '').toUpperCase() === code ||
+          (c.name || '').toUpperCase() === code
+      );
+
+      if (!opponentCircle) {
+        opponentCircle = createCircle(
+          `captain_${code.toLowerCase()}`,
+          `Team ${code}`,
+          50,
+          code,
+          'Competitive',
+          `Opponent circle code ${code}`
+        );
+      }
+
+      const allBattles = getAllBattles();
+      let matchedBattle = allBattles.find(
+        (b) =>
+          b.status === 'active' &&
+          ((b.circleAId === myCircle.id && b.circleBId === opponentCircle.id) ||
+           (b.circleAId === opponentCircle.id && b.circleBId === myCircle.id))
+      );
+
+      if (!matchedBattle) {
+        matchedBattle = createCircleVsCircleBattle(myCircle, opponentCircle, cleanUsername, {
+          language: chosenLanguage || 'Python',
+          solvingTimeMinutes: customBattleMinutes || 15,
+        });
+        matchedBattle.phase = BATTLE_PHASES.SOLVING;
+        matchedBattle.teams.teamA.captainReady = true;
+        matchedBattle.teams.teamB.captainReady = true;
+        matchedBattle.teams.teamA.status = 'writing';
+        matchedBattle.teams.teamB.status = 'writing';
+        const solvingDurationSeconds = (customBattleMinutes || 15) * 60;
+        matchedBattle.phaseStartedAt = new Date().toISOString();
+        matchedBattle.phaseDurationSeconds = solvingDurationSeconds;
+        matchedBattle.phaseEndTime = new Date(Date.now() + solvingDurationSeconds * 1000).toISOString();
+
+        saveBattle(matchedBattle);
+
+        try {
+          await fetch('/api/battles', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(matchedBattle),
+          });
+        } catch {
+          // local fallback
+        }
+      } else {
+        // If connecting to an existing battle, update solving duration if still in solving phase
+        if (customBattleMinutes && matchedBattle.phase === BATTLE_PHASES.SOLVING) {
+          const solvingDurationSeconds = (customBattleMinutes || 15) * 60;
+          if (!matchedBattle.settings) matchedBattle.settings = {};
+          matchedBattle.settings.solvingTimeMinutes = customBattleMinutes;
+          matchedBattle.phaseDurationSeconds = solvingDurationSeconds;
+          matchedBattle.phaseEndTime = new Date(Date.now() + solvingDurationSeconds * 1000).toISOString();
+          saveBattle(matchedBattle);
+        }
+      }
+
+      setShowConnectModal(false);
+      setBattle(getSanitizedBattleForUser(matchedBattle, cleanUsername));
+      if (onNavigate) {
+        onNavigate(`battle-zone/${matchedBattle.id}`);
+      }
+    } catch (err) {
+      setConnectError(err.message || 'Failed to connect opponent team.');
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  // Handle setting custom battle time during live match
+  const handleApplyCustomBattleTime = useCallback(async (minutes) => {
+    if (!battle) return;
+    try {
+      updateBattleTime(battle.id, cleanUsername, { minutes });
+      try {
+        await fetch(`/api/battles/${encodeURIComponent(battle.id)}/time`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            battleId: battle.id,
+            username: cleanUsername,
+            minutes,
+          }),
+        });
+      } catch {
+        // local fallback
+      }
+      setShowTimeModal(false);
+      void fetchBattleState();
+    } catch (err) {
+      alert(`Failed to set custom time: ${err.message}`);
+    }
+  }, [battle, cleanUsername, fetchBattleState]);
+
+  // Handle adding minutes to the battle timer
+  const handleAddBattleTime = useCallback(async (addMinutes) => {
+    if (!battle) return;
+    try {
+      updateBattleTime(battle.id, cleanUsername, { addMinutes });
+      try {
+        await fetch(`/api/battles/${encodeURIComponent(battle.id)}/time`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            battleId: battle.id,
+            username: cleanUsername,
+            addMinutes,
+          }),
+        });
+      } catch {
+        // local fallback
+      }
+      setShowTimeModal(false);
+      void fetchBattleState();
+    } catch (err) {
+      alert(`Failed to add time: ${err.message}`);
+    }
+  }, [battle, cleanUsername, fetchBattleState]);
+
+  // Give Problem to Opponent Team
+  const handleSendProblemToOpponent = useCallback(async (authorTeamKey) => {
+    if (!battle) return;
+    const title = authorTeamKey === 'teamA' ? giveTitleA : giveTitleB;
+    const desc = authorTeamKey === 'teamA' ? giveDescA : giveDescB;
+    const constraints = authorTeamKey === 'teamA' ? giveConstraintsA : giveConstraintsB;
+    const testCases = authorTeamKey === 'teamA' ? giveTestCasesA : giveTestCasesB;
+
+    if (!title.trim() || !desc.trim()) {
+      alert('Please provide a problem title and description.');
+      return;
+    }
+
+    const newChallenge = {
+      id: `chal_${Date.now()}_${authorTeamKey}`,
+      title: title.trim(),
+      description: desc.trim(),
+      constraints: constraints.trim(),
+      type: CHALLENGE_TYPES.FROM_SCRATCH,
+      starterCode: getDefaultStarterCode(battle.language),
+      referenceSolution: '',
+      testCases: testCases && testCases.length > 0 ? testCases : [
+        { id: 'tc_1', input: 'sample', expectedOutput: 'sample', isSample: true, isHidden: false }
+      ],
+      authorTeam: authorTeamKey,
+      authorUsername: cleanUsername,
+      published: true,
+      publishedAt: new Date().toISOString(),
+    };
+
+    const updatedBattle = { ...battle };
+    const roundIdx = (updatedBattle.currentRound || 1) - 1;
+    if (!updatedBattle.rounds) {
+      updatedBattle.rounds = [{
+        roundNumber: 1,
+        teamAChallenge: null,
+        teamBChallenge: null,
+        teamASubmission: null,
+        teamBSubmission: null,
+        result: null,
+        status: 'in_progress',
+      }];
+    }
+    if (!updatedBattle.rounds[roundIdx]) {
+      updatedBattle.rounds[roundIdx] = {
+        roundNumber: roundIdx + 1,
+        teamAChallenge: null,
+        teamBChallenge: null,
+        teamASubmission: null,
+        teamBSubmission: null,
+        result: null,
+        status: 'in_progress',
+      };
+    }
+
+    if (authorTeamKey === 'teamA') {
+      updatedBattle.rounds[roundIdx].teamAChallenge = newChallenge;
+      setShowGiveProblemA(false);
+    } else {
+      updatedBattle.rounds[roundIdx].teamBChallenge = newChallenge;
+      setShowGiveProblemB(false);
+    }
+
+    setBattle(updatedBattle);
+    saveBattle(updatedBattle);
+
+    try {
+      await fetch(`/api/battles/${encodeURIComponent(battle.id)}/challenge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          battleId: battle.id,
+          teamKey: authorTeamKey,
+          username: cleanUsername,
+          challenge: newChallenge,
+        }),
+      });
+    } catch {
+      // local save done
+    }
+
+    setProblemSentNotice(`Problem "${newChallenge.title}" successfully given to opponent team!`);
+    setTimeout(() => setProblemSentNotice(null), 5000);
+  }, [
+    battle,
+    cleanUsername,
+    giveTitleA,
+    giveDescA,
+    giveConstraintsA,
+    giveTestCasesA,
+    giveTitleB,
+    giveDescB,
+    giveConstraintsB,
+    giveTestCasesB,
+  ]);
+
+  const handleLoadPreset = (preset, teamKey) => {
+    if (teamKey === 'teamA') {
+      setGiveTitleA(preset.title);
+      setGiveDescA(preset.description);
+      setGiveConstraintsA(preset.constraints);
+      setGiveTestCasesA(preset.testCases);
+    } else {
+      setGiveTitleB(preset.title);
+      setGiveDescB(preset.description);
+      setGiveConstraintsB(preset.constraints);
+      setGiveTestCasesB(preset.testCases);
+    }
+  };
+
+  const handleQuickGivePreset = useCallback(async (preset, authorTeamKey) => {
+    if (!battle) return;
+    const newChallenge = {
+      id: `chal_${Date.now()}_${authorTeamKey}`,
+      title: preset.title,
+      description: preset.description,
+      constraints: preset.constraints,
+      type: CHALLENGE_TYPES.FROM_SCRATCH,
+      starterCode: getDefaultStarterCode(battle.language),
+      referenceSolution: '',
+      testCases: preset.testCases,
+      authorTeam: authorTeamKey,
+      authorUsername: cleanUsername,
+      published: true,
+      publishedAt: new Date().toISOString(),
+    };
+
+    const updatedBattle = { ...battle };
+    const roundIdx = (updatedBattle.currentRound || 1) - 1;
+    if (!updatedBattle.rounds) {
+      updatedBattle.rounds = [{
+        roundNumber: 1,
+        teamAChallenge: null,
+        teamBChallenge: null,
+        teamASubmission: null,
+        teamBSubmission: null,
+        result: null,
+        status: 'in_progress',
+      }];
+    }
+    if (!updatedBattle.rounds[roundIdx]) {
+      updatedBattle.rounds[roundIdx] = {
+        roundNumber: roundIdx + 1,
+        teamAChallenge: null,
+        teamBChallenge: null,
+        teamASubmission: null,
+        teamBSubmission: null,
+        result: null,
+        status: 'in_progress',
+      };
+    }
+
+    if (authorTeamKey === 'teamA') {
+      updatedBattle.rounds[roundIdx].teamAChallenge = newChallenge;
+      setShowGiveProblemA(false);
+    } else {
+      updatedBattle.rounds[roundIdx].teamBChallenge = newChallenge;
+      setShowGiveProblemB(false);
+    }
+
+    setBattle(updatedBattle);
+    saveBattle(updatedBattle);
+
+    try {
+      await fetch(`/api/battles/${encodeURIComponent(battle.id)}/challenge`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          battleId: battle.id,
+          teamKey: authorTeamKey,
+          username: cleanUsername,
+          challenge: newChallenge,
+        }),
+      });
+    } catch {
+      // local save done
+    }
+
+    setProblemSentNotice(`Problem "${preset.title}" given to opponent team!`);
+    setTimeout(() => setProblemSentNotice(null), 5000);
+  }, [battle, cleanUsername]);
+
   if (loading) {
     return (
       <div className="bz-loading-screen">
@@ -541,9 +1041,14 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
       <div className="bz-error-screen">
         <h2 className="bz-error-title">Battle Arena Error</h2>
         <p className="bz-error-desc">{error}</p>
-        <button type="button" className="bz-action-btn" onClick={() => onNavigate('group-challenge')}>
-          ← Return to Friend Circles
-        </button>
+        <div className="bz-hub-actions-row">
+          <button type="button" className="bz-action-btn" onClick={() => onNavigate('dashboard')}>
+            ← Back to Dashboard
+          </button>
+          <button type="button" className="bz-action-btn" onClick={() => { setBattle(null); onNavigate('battle-zone'); }}>
+            ← Back to Battle Field
+          </button>
+        </div>
       </div>
     );
   }
@@ -558,6 +1063,16 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
 
     return (
       <div className="bz-hub-screen">
+        <div className="bz-hub-top-nav">
+          <button
+            type="button"
+            className="bz-nav-back-btn"
+            onClick={() => onNavigate('dashboard')}
+            title="Back to Dashboard"
+          >
+            ← Back to Dashboard
+          </button>
+        </div>
         <div className="bz-hub-card">
           <div className="bz-hub-badge">⚔️ LIVE COMPETITIVE ARENA</div>
           <h1 className="bz-hub-title">Battle Field</h1>
@@ -593,9 +1108,12 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
             <button
               type="button"
               className="bz-action-btn bz-btn-primary"
-              onClick={() => onNavigate('group-challenge')}
+              onClick={() => {
+                setConnectError(null);
+                setShowConnectModal(true);
+              }}
             >
-              ⚔️ Open Friend Circle to Challenge
+              ⚔️ Connect to your opponent team
             </button>
             <button
               type="button"
@@ -605,6 +1123,143 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
               ← Back to Dashboard
             </button>
           </div>
+
+          {/* Modal / Card to Enter Opponent Circle Code */}
+          {showConnectModal && (
+            <div className="bz-connect-overlay" onClick={() => setShowConnectModal(false)}>
+              <div className="bz-connect-modal" onClick={(e) => e.stopPropagation()}>
+                <div className="bz-connect-top-bar">
+                  <button
+                    type="button"
+                    className="bz-modal-back-btn"
+                    onClick={() => setShowConnectModal(false)}
+                    title="Back to Battle Field"
+                  >
+                    ← Back
+                  </button>
+                  <span className="bz-connect-badge">⚔️ LIVE TEAM MATCH</span>
+                </div>
+                <div className="bz-connect-header">
+                  <h2 className="bz-connect-title">Connect to your opponent team</h2>
+                  <p className="bz-connect-desc">
+                    Enter your opponent's circle code to connect both teams into the live split-screen battle arena.
+                  </p>
+                </div>
+
+                {/* Current user's circle code for sharing */}
+                <div className="bz-connect-share-box">
+                  <div className="bz-share-label">Your Circle Code (Share with opponent):</div>
+                  <div className="bz-share-row">
+                    <span className="bz-share-code">{userCircle?.inviteCode || 'TEAM_READY'}</span>
+                    <button
+                      type="button"
+                      className="bz-share-copy-btn"
+                      onClick={() => {
+                        if (userCircle?.inviteCode) {
+                          navigator.clipboard.writeText(userCircle.inviteCode);
+                          setCopiedCode(true);
+                          setTimeout(() => setCopiedCode(false), 2000);
+                        }
+                      }}
+                    >
+                      {copiedCode ? '✓ Copied!' : 'Copy Code'}
+                    </button>
+                  </div>
+                  <span className="bz-share-sub">
+                    Team: <strong>{userCircle?.name || `${currentUser?.fullName || cleanUsername}'s Team`}</strong>
+                  </span>
+                </div>
+
+                <form onSubmit={handleConnectOpponent} className="bz-connect-form">
+                  <div className="bz-connect-field">
+                    <label htmlFor="opponent-circle-code-input" className="bz-connect-label">
+                      Enter opponent circle code:
+                    </label>
+                    <input
+                      id="opponent-circle-code-input"
+                      type="text"
+                      className="bz-connect-input"
+                      placeholder="e.g. CIR892 or RIVAL_TEAM"
+                      value={opponentCircleCode}
+                      onChange={(e) => setOpponentCircleCode(e.target.value.toUpperCase())}
+                      autoFocus
+                      required
+                    />
+                  </div>
+
+                  <div className="bz-connect-field">
+                    <label htmlFor="battle-language-select" className="bz-connect-label">
+                      Choose Compiler Language:
+                    </label>
+                    <select
+                      id="battle-language-select"
+                      className="bz-connect-select"
+                      value={chosenLanguage}
+                      onChange={(e) => setChosenLanguage(e.target.value)}
+                    >
+                      <option value="Python">Python 3</option>
+                      <option value="C">C (GCC)</option>
+                      <option value="C++">C++ (GCC)</option>
+                    </select>
+                  </div>
+
+                  <div className="bz-connect-field">
+                    <label htmlFor="custom-battle-time-input" className="bz-connect-label">
+                      ⏱️ Battle Duration (Custom Time):
+                    </label>
+                    <div className="bz-time-chips-container">
+                      {[5, 10, 15, 20, 30, 45, 60].map((mins) => (
+                        <button
+                          key={mins}
+                          type="button"
+                          className={`bz-time-chip ${customBattleMinutes === mins ? 'selected' : ''}`}
+                          onClick={() => setCustomBattleMinutes(mins)}
+                        >
+                          {mins}m
+                        </button>
+                      ))}
+                    </div>
+                    <div className="bz-custom-time-input-wrap">
+                      <input
+                        id="custom-battle-time-input"
+                        type="number"
+                        min="1"
+                        max="180"
+                        className="bz-connect-input bz-time-number-input"
+                        value={customBattleMinutes}
+                        onChange={(e) => setCustomBattleMinutes(Math.max(1, Math.min(180, Number(e.target.value) || 1)))}
+                        placeholder="Custom min"
+                      />
+                      <span className="bz-time-input-suffix">minutes</span>
+                    </div>
+                  </div>
+
+                  {connectError && (
+                    <div className="bz-connect-error">
+                      ⚠️ {connectError}
+                    </div>
+                  )}
+
+                  <div className="bz-connect-actions">
+                    <button
+                      type="button"
+                      className="bz-action-btn"
+                      onClick={() => setShowConnectModal(false)}
+                    >
+                      ← Back
+                    </button>
+                    <button
+                      type="submit"
+                      className="bz-action-btn bz-btn-primary"
+                      disabled={isConnecting}
+                    >
+                      {isConnecting ? 'Connecting Teams...' : '⚔️ Connect & Enter Battle'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
 
           {userMatches.length > 0 && (
             <div className="bz-hub-recent-section">
@@ -656,13 +1311,20 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
             type="button"
             className="bz-nav-back-btn"
             onClick={() => {
-              if (window.confirm('Leave Battle Zone? Your match progress will be preserved.')) {
-                onNavigate('group-challenge');
-              }
+              setBattle(null);
+              onNavigate('battle-zone');
             }}
-            title="Return to Circles"
+            title="Back to Battle Field Hub"
           >
-            ← Exit Arena
+            ← Back to Battle Field
+          </button>
+          <button
+            type="button"
+            className="bz-nav-back-btn bz-nav-back-sub"
+            onClick={() => onNavigate('dashboard')}
+            title="Back to Dashboard"
+          >
+            ← Back to Dashboard
           </button>
           <div className="bz-title-box">
             <span className="bz-brand-pill">⚔️ BATTLE ZONE</span>
@@ -695,11 +1357,24 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
             <span className="bz-team-score-name bz-name-b">{teamB.name}</span>
           </div>
 
-          {/* Server-Synced Countdown Clock */}
+          {/* Server-Synced Countdown Clock & Custom Time Option */}
           {!isLobby && !isFinished && (
-            <div className={`bz-countdown-box ${timeRemainingSeconds < 30 ? 'bz-timer-urgent' : timeRemainingSeconds < 120 ? 'bz-timer-warning' : ''}`}>
-              <span className="bz-timer-icon">⏳</span>
-              <span className="bz-timer-val">{formatTimer(timeRemainingSeconds)}</span>
+            <div className="bz-timer-wrapper">
+              <div className={`bz-countdown-box ${timeRemainingSeconds < 30 ? 'bz-timer-urgent' : timeRemainingSeconds < 120 ? 'bz-timer-warning' : ''}`}>
+                <span className="bz-timer-icon">⏳</span>
+                <span className="bz-timer-val">{formatTimer(timeRemainingSeconds)}</span>
+              </div>
+              <button
+                type="button"
+                className="bz-time-adjust-btn"
+                onClick={() => {
+                  setArenaCustomMinutes(Math.max(1, Math.round(timeRemainingSeconds / 60)) || 15);
+                  setShowTimeModal(true);
+                }}
+                title="Set custom battle time"
+              >
+                ⏱️ Set Time
+              </button>
             </div>
           )}
         </div>
@@ -714,6 +1389,13 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
           )}
         </div>
       </header>
+
+      {/* Notice Banner */}
+      {problemSentNotice && (
+        <div className="bz-notice-banner">
+          ✓ {problemSentNotice}
+        </div>
+      )}
 
       {/* Mobile Tab Switcher (<=900px) */}
       <div className="bz-mobile-tabs">
@@ -838,13 +1520,16 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
                 {/* Collapsible Problem Window */}
                 <div
                   className={`bz-problem-window ${problemWindowCollapsedA ? 'collapsed' : ''}`}
-                  style={{ height: problemWindowCollapsedA ? '44px' : `${problemWindowHeight}px` }}
+                  style={{
+                    height: problemWindowCollapsedA ? '44px' : showGiveProblemA ? '440px' : `${problemWindowHeight}px`,
+                    overflowY: 'auto',
+                  }}
                 >
                   <div className="bz-problem-header">
                     <div className="bz-problem-title-wrap">
-                      <span className="bz-problem-pill">TASK</span>
+                      <span className="bz-problem-pill">TASK FROM OPPONENT TEAM</span>
                       <h3 className="bz-problem-title">
-                        {teamAChallengeToSolve?.title || 'Waiting for Opponent Challenge...'}
+                        {teamAChallengeToSolve?.title || 'Waiting for Opponent Team to Give Problem...'}
                       </h3>
                       {teamAChallengeToSolve?.isFallback && (
                         <span className="bz-fallback-tag" title="Auto-selected because time expired">
@@ -852,43 +1537,151 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
                         </span>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      className="bz-collapse-btn"
-                      onClick={() => setProblemWindowCollapsedA(!problemWindowCollapsedA)}
-                      title={problemWindowCollapsedA ? 'Expand Problem' : 'Collapse Problem'}
-                    >
-                      {problemWindowCollapsedA ? '▾ Show Problem' : '▴ Hide'}
-                    </button>
+                    <div className="bz-problem-header-actions">
+                      <button
+                        type="button"
+                        className="bz-give-toggle-btn"
+                        onClick={() => setShowGiveProblemA(!showGiveProblemA)}
+                        title="Give problem to opponent team"
+                      >
+                        {showGiveProblemA ? '✕ Close Form' : '⚔️ Give Problem to Opponent Team'}
+                      </button>
+                      <button
+                        type="button"
+                        className="bz-collapse-btn"
+                        onClick={() => setProblemWindowCollapsedA(!problemWindowCollapsedA)}
+                        title={problemWindowCollapsedA ? 'Expand Problem' : 'Collapse Problem'}
+                      >
+                        {problemWindowCollapsedA ? '▾ Show' : '▴ Hide'}
+                      </button>
+                    </div>
                   </div>
 
                   {!problemWindowCollapsedA && (
                     <div className="bz-problem-content">
-                      <p className="bz-problem-desc">{teamAChallengeToSolve?.description}</p>
-                      {teamAChallengeToSolve?.constraints && (
-                        <div className="bz-problem-constraints">
-                          <strong>Constraints:</strong> {teamAChallengeToSolve.constraints}
+                      {showGiveProblemA ? (
+                        <div className="bz-give-problem-panel">
+                          <div className="bz-give-panel-header">
+                            <div className="bz-give-header-row">
+                              <h4>Give Problem to Opponent Team ({teamB.name})</h4>
+                              <button
+                                type="button"
+                                className="bz-panel-back-btn"
+                                onClick={() => setShowGiveProblemA(false)}
+                                title="Back to Problem"
+                              >
+                                ← Back to Problem
+                              </button>
+                            </div>
+                            <span className="bz-give-sub">
+                              Pick a quick preset challenge or author your own problem:
+                            </span>
+                          </div>
+
+                          <div className="bz-preset-row">
+                            {QUICK_CHALLENGE_PRESETS.map((p) => (
+                              <button
+                                key={p.title}
+                                type="button"
+                                className="bz-preset-btn"
+                                onClick={() => handleLoadPreset(p, 'teamA')}
+                                title="Load this problem preset into the form"
+                              >
+                                {p.title}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="bz-give-form-fields">
+                            <input
+                              type="text"
+                              className="bz-give-input"
+                              placeholder="Problem Title"
+                              value={giveTitleA}
+                              onChange={(e) => setGiveTitleA(e.target.value)}
+                            />
+                            <textarea
+                              className="bz-give-textarea"
+                              placeholder="Problem Description"
+                              rows={3}
+                              value={giveDescA}
+                              onChange={(e) => setGiveDescA(e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              className="bz-give-input"
+                              placeholder="Constraints (e.g. 1 <= N <= 1000)"
+                              value={giveConstraintsA}
+                              onChange={(e) => setGiveConstraintsA(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="bz-give-actions-row">
+                            <button
+                              type="button"
+                              className="bz-action-btn bz-btn-primary bz-btn-sm"
+                              onClick={() => handleSendProblemToOpponent('teamA')}
+                            >
+                              🚀 Send Problem to Opponent Team
+                            </button>
+                            <button
+                              type="button"
+                              className="bz-action-btn bz-btn-sm"
+                              onClick={() => setShowGiveProblemA(false)}
+                            >
+                              ← Back to Problem
+                            </button>
+                          </div>
+                        </div>
+                      ) : teamAChallengeToSolve ? (
+                        <>
+                          <p className="bz-problem-desc">{teamAChallengeToSolve?.description}</p>
+                          {teamAChallengeToSolve?.constraints && (
+                            <div className="bz-problem-constraints">
+                              <strong>Constraints:</strong> {teamAChallengeToSolve.constraints}
+                            </div>
+                          )}
+
+                          {/* Sample Test Cases */}
+                          <div className="bz-sample-tests-section">
+                            <span className="bz-samples-title">Sample Test Cases:</span>
+                            {(teamAChallengeToSolve?.testCases || [])
+                              .filter((tc) => tc.isSample)
+                              .map((tc, idx) => (
+                                <div key={tc.id || idx} className="bz-sample-card">
+                                  <div className="bz-sample-row">
+                                    <span className="bz-sample-lbl">Input:</span>
+                                    <pre className="bz-sample-code">{tc.input}</pre>
+                                  </div>
+                                  <div className="bz-sample-row">
+                                    <span className="bz-sample-lbl">Expected:</span>
+                                    <pre className="bz-sample-code">{tc.expectedOutput}</pre>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bz-problem-empty-state">
+                          <p className="bz-empty-text">
+                            ⏳ <strong>Opponent team has not given a problem yet.</strong>
+                            <br />
+                            Click "⚔️ Give Problem to Opponent Team" to send them a challenge, or load a quick challenge:
+                          </p>
+                          <div className="bz-preset-row">
+                            {QUICK_CHALLENGE_PRESETS.slice(0, 3).map((p) => (
+                              <button
+                                key={p.title}
+                                type="button"
+                                className="bz-preset-btn"
+                                onClick={() => handleQuickGivePreset(p, 'teamB')}
+                              >
+                                ⚡ Load "{p.title}" from Opponent
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
-
-                      {/* Sample Test Cases */}
-                      <div className="bz-sample-tests-section">
-                        <span className="bz-samples-title">Sample Test Cases:</span>
-                        {(teamAChallengeToSolve?.testCases || [])
-                          .filter((tc) => tc.isSample)
-                          .map((tc, idx) => (
-                            <div key={tc.id || idx} className="bz-sample-card">
-                              <div className="bz-sample-row">
-                                <span className="bz-sample-lbl">Input:</span>
-                                <pre className="bz-sample-code">{tc.input}</pre>
-                              </div>
-                              <div className="bz-sample-row">
-                                <span className="bz-sample-lbl">Expected:</span>
-                                <pre className="bz-sample-code">{tc.expectedOutput}</pre>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
                     </div>
                   )}
                 </div>
@@ -896,7 +1689,22 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
                 {/* Monaco Compiler / Editor Window */}
                 <div className="bz-editor-wrapper">
                   <div className="bz-editor-header">
-                    <span className="bz-editor-lang-tag">Editor: {battle.language}</span>
+                    <div className="bz-lang-picker-group">
+                      <label htmlFor="bz-lang-select-teamA" className="bz-lang-label">
+                        Language:
+                      </label>
+                      <select
+                        id="bz-lang-select-teamA"
+                        className="bz-lang-select"
+                        value={battle.language}
+                        onChange={(e) => handleLanguageChange(e.target.value)}
+                        title="Choose compiler language"
+                      >
+                        <option value="Python">Python 3</option>
+                        <option value="C">C (GCC)</option>
+                        <option value="C++">C++ (GCC)</option>
+                      </select>
+                    </div>
                     {viewerInfo.userTeamKey === 'teamA' ? (
                       <span className="bz-collab-tag">Teammate live edits active</span>
                     ) : (
@@ -1076,13 +1884,16 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
                 {/* Collapsible Problem Window */}
                 <div
                   className={`bz-problem-window ${problemWindowCollapsedB ? 'collapsed' : ''}`}
-                  style={{ height: problemWindowCollapsedB ? '44px' : `${problemWindowHeight}px` }}
+                  style={{
+                    height: problemWindowCollapsedB ? '44px' : showGiveProblemB ? '440px' : `${problemWindowHeight}px`,
+                    overflowY: 'auto',
+                  }}
                 >
                   <div className="bz-problem-header">
                     <div className="bz-problem-title-wrap">
-                      <span className="bz-problem-pill">TASK</span>
+                      <span className="bz-problem-pill">TASK FROM OPPONENT TEAM</span>
                       <h3 className="bz-problem-title">
-                        {teamBChallengeToSolve?.title || 'Waiting for Opponent Challenge...'}
+                        {teamBChallengeToSolve?.title || 'Waiting for Opponent Team to Give Problem...'}
                       </h3>
                       {teamBChallengeToSolve?.isFallback && (
                         <span className="bz-fallback-tag" title="Auto-selected because time expired">
@@ -1090,43 +1901,151 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
                         </span>
                       )}
                     </div>
-                    <button
-                      type="button"
-                      className="bz-collapse-btn"
-                      onClick={() => setProblemWindowCollapsedB(!problemWindowCollapsedB)}
-                      title={problemWindowCollapsedB ? 'Expand Problem' : 'Collapse Problem'}
-                    >
-                      {problemWindowCollapsedB ? '▾ Show Problem' : '▴ Hide'}
-                    </button>
+                    <div className="bz-problem-header-actions">
+                      <button
+                        type="button"
+                        className="bz-give-toggle-btn"
+                        onClick={() => setShowGiveProblemB(!showGiveProblemB)}
+                        title="Give problem to opponent team"
+                      >
+                        {showGiveProblemB ? '✕ Close Form' : '⚔️ Give Problem to Opponent Team'}
+                      </button>
+                      <button
+                        type="button"
+                        className="bz-collapse-btn"
+                        onClick={() => setProblemWindowCollapsedB(!problemWindowCollapsedB)}
+                        title={problemWindowCollapsedB ? 'Expand Problem' : 'Collapse Problem'}
+                      >
+                        {problemWindowCollapsedB ? '▾ Show' : '▴ Hide'}
+                      </button>
+                    </div>
                   </div>
 
                   {!problemWindowCollapsedB && (
                     <div className="bz-problem-content">
-                      <p className="bz-problem-desc">{teamBChallengeToSolve?.description}</p>
-                      {teamBChallengeToSolve?.constraints && (
-                        <div className="bz-problem-constraints">
-                          <strong>Constraints:</strong> {teamBChallengeToSolve.constraints}
+                      {showGiveProblemB ? (
+                        <div className="bz-give-problem-panel">
+                          <div className="bz-give-panel-header">
+                            <div className="bz-give-header-row">
+                              <h4>Give Problem to Opponent Team ({teamA.name})</h4>
+                              <button
+                                type="button"
+                                className="bz-panel-back-btn"
+                                onClick={() => setShowGiveProblemB(false)}
+                                title="Back to Problem"
+                              >
+                                ← Back to Problem
+                              </button>
+                            </div>
+                            <span className="bz-give-sub">
+                              Pick a quick preset challenge or author your own problem:
+                            </span>
+                          </div>
+
+                          <div className="bz-preset-row">
+                            {QUICK_CHALLENGE_PRESETS.map((p) => (
+                              <button
+                                key={p.title}
+                                type="button"
+                                className="bz-preset-btn"
+                                onClick={() => handleLoadPreset(p, 'teamB')}
+                                title="Load this problem preset into the form"
+                              >
+                                {p.title}
+                              </button>
+                            ))}
+                          </div>
+
+                          <div className="bz-give-form-fields">
+                            <input
+                              type="text"
+                              className="bz-give-input"
+                              placeholder="Problem Title"
+                              value={giveTitleB}
+                              onChange={(e) => setGiveTitleB(e.target.value)}
+                            />
+                            <textarea
+                              className="bz-give-textarea"
+                              placeholder="Problem Description"
+                              rows={3}
+                              value={giveDescB}
+                              onChange={(e) => setGiveDescB(e.target.value)}
+                            />
+                            <input
+                              type="text"
+                              className="bz-give-input"
+                              placeholder="Constraints (e.g. 1 <= N <= 1000)"
+                              value={giveConstraintsB}
+                              onChange={(e) => setGiveConstraintsB(e.target.value)}
+                            />
+                          </div>
+
+                          <div className="bz-give-actions-row">
+                            <button
+                              type="button"
+                              className="bz-action-btn bz-btn-primary bz-btn-sm"
+                              onClick={() => handleSendProblemToOpponent('teamB')}
+                            >
+                              🚀 Send Problem to Opponent Team
+                            </button>
+                            <button
+                              type="button"
+                              className="bz-action-btn bz-btn-sm"
+                              onClick={() => setShowGiveProblemB(false)}
+                            >
+                              ← Back to Problem
+                            </button>
+                          </div>
+                        </div>
+                      ) : teamBChallengeToSolve ? (
+                        <>
+                          <p className="bz-problem-desc">{teamBChallengeToSolve?.description}</p>
+                          {teamBChallengeToSolve?.constraints && (
+                            <div className="bz-problem-constraints">
+                              <strong>Constraints:</strong> {teamBChallengeToSolve.constraints}
+                            </div>
+                          )}
+
+                          {/* Sample Test Cases */}
+                          <div className="bz-sample-tests-section">
+                            <span className="bz-samples-title">Sample Test Cases:</span>
+                            {(teamBChallengeToSolve?.testCases || [])
+                              .filter((tc) => tc.isSample)
+                              .map((tc, idx) => (
+                                <div key={tc.id || idx} className="bz-sample-card">
+                                  <div className="bz-sample-row">
+                                    <span className="bz-sample-lbl">Input:</span>
+                                    <pre className="bz-sample-code">{tc.input}</pre>
+                                  </div>
+                                  <div className="bz-sample-row">
+                                    <span className="bz-sample-lbl">Expected:</span>
+                                    <pre className="bz-sample-code">{tc.expectedOutput}</pre>
+                                  </div>
+                                </div>
+                              ))}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="bz-problem-empty-state">
+                          <p className="bz-empty-text">
+                            ⏳ <strong>Opponent team has not given a problem yet.</strong>
+                            <br />
+                            Click "⚔️ Give Problem to Opponent Team" to send them a challenge, or load a quick challenge:
+                          </p>
+                          <div className="bz-preset-row">
+                            {QUICK_CHALLENGE_PRESETS.slice(0, 3).map((p) => (
+                              <button
+                                key={p.title}
+                                type="button"
+                                className="bz-preset-btn"
+                                onClick={() => handleQuickGivePreset(p, 'teamA')}
+                              >
+                                ⚡ Load "{p.title}" from Opponent
+                              </button>
+                            ))}
+                          </div>
                         </div>
                       )}
-
-                      {/* Sample Test Cases */}
-                      <div className="bz-sample-tests-section">
-                        <span className="bz-samples-title">Sample Test Cases:</span>
-                        {(teamBChallengeToSolve?.testCases || [])
-                          .filter((tc) => tc.isSample)
-                          .map((tc, idx) => (
-                            <div key={tc.id || idx} className="bz-sample-card">
-                              <div className="bz-sample-row">
-                                <span className="bz-sample-lbl">Input:</span>
-                                <pre className="bz-sample-code">{tc.input}</pre>
-                              </div>
-                              <div className="bz-sample-row">
-                                <span className="bz-sample-lbl">Expected:</span>
-                                <pre className="bz-sample-code">{tc.expectedOutput}</pre>
-                              </div>
-                            </div>
-                          ))}
-                      </div>
                     </div>
                   )}
                 </div>
@@ -1134,7 +2053,22 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
                 {/* Monaco Compiler / Editor Window */}
                 <div className="bz-editor-wrapper">
                   <div className="bz-editor-header">
-                    <span className="bz-editor-lang-tag">Editor: {battle.language}</span>
+                    <div className="bz-lang-picker-group">
+                      <label htmlFor="bz-lang-select-teamB" className="bz-lang-label">
+                        Language:
+                      </label>
+                      <select
+                        id="bz-lang-select-teamB"
+                        className="bz-lang-select"
+                        value={battle.language}
+                        onChange={(e) => handleLanguageChange(e.target.value)}
+                        title="Choose compiler language"
+                      >
+                        <option value="Python">Python 3</option>
+                        <option value="C">C (GCC)</option>
+                        <option value="C++">C++ (GCC)</option>
+                      </select>
+                    </div>
                     {viewerInfo.userTeamKey === 'teamB' ? (
                       <span className="bz-collab-tag">Teammate live edits active</span>
                     ) : (
@@ -1253,7 +2187,7 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
               </div>
             </div>
 
-            {(viewerInfo.isCreator || viewerInfo.isCaptainA || viewerInfo.isCaptainB) && (
+            {battle.currentRound < battle.totalRounds && (viewerInfo.isCreator || viewerInfo.isCaptainA || viewerInfo.isCaptainB) && (
               <button
                 type="button"
                 className="bz-action-btn primary"
@@ -1262,7 +2196,7 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
                   fetchBattleState();
                 }}
               >
-                {battle.currentRound < battle.totalRounds ? 'Next Round →' : 'View Final Scoreboard 🏁'}
+                Next Round →
               </button>
             )}
           </div>
@@ -1325,13 +2259,126 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
               )}
             </div>
 
-            <div className="bz-modal-footer">
+            <div className="bz-modal-footer" style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
               <button
                 type="button"
                 className="bz-action-btn primary"
-                onClick={() => onNavigate('group-challenge')}
+                onClick={() => {
+                  setBattle(null);
+                  onNavigate('battle-zone');
+                }}
               >
-                Return to Friend Circles
+                ← Back to Battle Field
+              </button>
+              <button
+                type="button"
+                className="bz-action-btn"
+                onClick={() => onNavigate('dashboard')}
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ---------------------------------------------------------------------
+          6. ARENA CUSTOM TIME MODAL
+          --------------------------------------------------------------------- */}
+      {showTimeModal && (
+        <div className="bz-modal-overlay" onClick={() => setShowTimeModal(false)}>
+          <div className="bz-time-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="bz-connect-top-bar">
+              <button
+                type="button"
+                className="bz-modal-back-btn"
+                onClick={() => setShowTimeModal(false)}
+              >
+                ← Back
+              </button>
+              <span className="bz-connect-badge">⏱️ BATTLE FIELD TIMER</span>
+            </div>
+            <h3 className="bz-time-modal-title">Custom Time Settings</h3>
+            <p className="bz-time-modal-desc">
+              Adjust or set custom duration for this battle. Changes will synchronize immediately for both teams.
+            </p>
+
+            <div className="bz-current-time-display">
+              <span className="bz-current-time-label">Current Time Remaining:</span>
+              <span className="bz-current-time-val">{formatTimer(timeRemainingSeconds)}</span>
+            </div>
+
+            <div className="bz-quick-extend-section">
+              <label className="bz-connect-label">Quick Add Extra Time:</label>
+              <div className="bz-quick-time-buttons">
+                <button
+                  type="button"
+                  className="bz-quick-add-btn"
+                  onClick={() => handleAddBattleTime(2)}
+                >
+                  +2 Min
+                </button>
+                <button
+                  type="button"
+                  className="bz-quick-add-btn"
+                  onClick={() => handleAddBattleTime(5)}
+                >
+                  +5 Min
+                </button>
+                <button
+                  type="button"
+                  className="bz-quick-add-btn"
+                  onClick={() => handleAddBattleTime(10)}
+                >
+                  +10 Min
+                </button>
+              </div>
+            </div>
+
+            <div className="bz-custom-set-section">
+              <label htmlFor="arena-custom-time-input" className="bz-connect-label">
+                Set Remaining Time:
+              </label>
+              <div className="bz-custom-time-input-wrap">
+                <input
+                  id="arena-custom-time-input"
+                  type="number"
+                  min="1"
+                  max="180"
+                  className="bz-connect-input bz-time-number-input"
+                  value={arenaCustomMinutes}
+                  onChange={(e) => setArenaCustomMinutes(Math.max(1, Math.min(180, Number(e.target.value) || 1)))}
+                />
+                <span className="bz-time-input-suffix">minutes</span>
+              </div>
+              <div className="bz-time-chips-container" style={{ marginTop: '10px' }}>
+                {[5, 10, 15, 20, 30, 45, 60].map((mins) => (
+                  <button
+                    key={mins}
+                    type="button"
+                    className={`bz-time-chip ${arenaCustomMinutes === mins ? 'selected' : ''}`}
+                    onClick={() => setArenaCustomMinutes(mins)}
+                  >
+                    {mins}m
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bz-time-modal-actions">
+              <button
+                type="button"
+                className="bz-action-btn"
+                onClick={() => setShowTimeModal(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="bz-action-btn bz-btn-primary"
+                onClick={() => handleApplyCustomBattleTime(arenaCustomMinutes)}
+              >
+                ✓ Apply Custom Time
               </button>
             </div>
           </div>
@@ -1430,16 +2477,41 @@ function LobbySideView({
             </div>
 
             <div className="bz-setting-item">
-              <label>Solving Time:</label>
-              <select
-                disabled={!canModifySettings}
-                value={battle.settings.solvingTimeMinutes}
-                onChange={(e) => onUpdateSettings({ solvingTimeMinutes: Number(e.target.value) })}
-              >
-                <option value={10}>10 Minutes</option>
-                <option value={15}>15 Minutes (Default)</option>
-                <option value={20}>20 Minutes</option>
-              </select>
+              <label>Solving Time (Min):</label>
+              <div className="bz-lobby-custom-time-row">
+                <select
+                  disabled={!canModifySettings}
+                  value={[5, 10, 15, 20, 30, 45, 60].includes(battle.settings.solvingTimeMinutes) ? battle.settings.solvingTimeMinutes : 'custom'}
+                  onChange={(e) => {
+                    if (e.target.value !== 'custom') {
+                      onUpdateSettings({ solvingTimeMinutes: Number(e.target.value) });
+                    }
+                  }}
+                >
+                  <option value={5}>5 Minutes</option>
+                  <option value={10}>10 Minutes</option>
+                  <option value={15}>15 Minutes (Default)</option>
+                  <option value={20}>20 Minutes</option>
+                  <option value={30}>30 Minutes</option>
+                  <option value={45}>45 Minutes</option>
+                  <option value={60}>60 Minutes</option>
+                  <option value="custom">Custom...</option>
+                </select>
+                <input
+                  type="number"
+                  min="1"
+                  max="180"
+                  disabled={!canModifySettings}
+                  className="bz-lobby-time-num-input"
+                  value={battle.settings.solvingTimeMinutes || 15}
+                  onChange={(e) => {
+                    const val = Math.max(1, Math.min(180, Number(e.target.value) || 1));
+                    onUpdateSettings({ solvingTimeMinutes: val });
+                  }}
+                  title="Enter custom solving time in minutes"
+                  placeholder="min"
+                />
+              </div>
             </div>
 
             <div className="bz-setting-item">

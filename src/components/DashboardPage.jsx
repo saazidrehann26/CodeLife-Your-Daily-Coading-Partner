@@ -538,67 +538,6 @@ export default function DashboardPage({ currentUser, onNavigate, onSignOut }) {
 
         {/* Top Navbar Right Controls */}
         <div className="dash-nav-links" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <button
-            type="button"
-            className="spherical-btn spherical-btn-sm"
-            onClick={() => onNavigate && onNavigate('group-challenge')}
-            title="Open Friend Circle"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              position: 'relative',
-              padding: '6px 14px',
-              fontWeight: 600,
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-              <circle cx="9" cy="7" r="4" />
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
-              <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-            </svg>
-            <span>Friend Circle</span>
-            {hasGroupNotifications && (
-              <span
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: '#ff5252',
-                  boxShadow: '0 0 8px #ff5252',
-                }}
-              />
-            )}
-          </button>
-
-          <button
-            type="button"
-            className="spherical-btn spherical-btn-sm"
-            onClick={() => onNavigate && onNavigate('battle-zone')}
-            title="Open Battle Field"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              gap: '6px',
-              position: 'relative',
-              padding: '6px 14px',
-              fontWeight: 600,
-            }}
-          >
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
-              <path d="M13 19l6-6" />
-              <path d="M16 16l4 4" />
-              <path d="M19 21l2-2" />
-              <path d="M9.5 6.5L21 18v3h-3L6.5 9.5" />
-              <path d="M5 8l6-6" />
-              <path d="M8 5l-4-4" />
-              <path d="M2 5l2-2" />
-            </svg>
-            <span>Battle Field</span>
-          </button>
-
           {/* Authenticated User Profile Pill (Display only - non-clickable) */}
           <div
             className="dash-user-pill"

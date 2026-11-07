@@ -447,6 +447,166 @@ export default function LandingPage({ onGetStarted, currentUser, onNavigate, onS
         </section>
 
         {/* =========================================================================
+            FEATURE 4: FRIEND CIRCLE
+            - Image (friend circle.png) comes from left
+            - Text (Friend Circle) comes from right (opposite sides transition)
+           ========================================================================= */}
+        <section className="landing-feature-section landing-feature-reversed landing-feature-circle" id="feature-circle">
+          <div className="landing-feature-grid landing-circle-grid">
+            {/* Image side: comes from left */}
+            <div className="scroll-reveal anim-slide-in-left landing-feature-media circle-media-container">
+              <div className="landing-card-glow-wrap circle-glow-wrap">
+                <img
+                  src="/friend circle.png"
+                  alt="CodeLife Friend Circle Collaboration"
+                  className="landing-feature-img circle-feature-img"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/friend circle .png';
+                  }}
+                />
+              </div>
+            </div>
+
+            {/* Text side: comes from right */}
+            <div className="scroll-reveal anim-slide-in-right landing-feature-text">
+              <h2 className="landing-feature-title">Friend Circle</h2>
+              <p className="landing-feature-description">
+                Transform solitary programming into a thriving collaborative habit. Build private coding
+                circles with your friends, share instant join codes, track peer momentum, and assemble competitive
+                teams with designated captains for high-stakes problem solving.
+              </p>
+              <ul className="feature-perks-list">
+                <li>
+                  <span className="perk-check">✓</span>
+                  <span>Create custom circles with unique invite codes and instant joining</span>
+                </li>
+                <li>
+                  <span className="perk-check">✓</span>
+                  <span>Assemble balanced teams with assigned captains and strategy notes</span>
+                </li>
+                <li>
+                  <span className="perk-check">✓</span>
+                  <span>Live circle activity feeds, peer notifications, and public coder profiles</span>
+                </li>
+              </ul>
+
+              {/* Friend Circle Callout Card */}
+              <div className="feature-callout-card circle-callout-card">
+                <div className="feature-callout-icon-wrap circle-callout-icon">
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                <div className="feature-callout-info">
+                  <span className="feature-callout-tag">Collaborative Peer Hub</span>
+                  <p className="feature-callout-quote">"Learn Faster Together, Grow Stronger As A Team"</p>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '4px' }}>
+                <button
+                  type="button"
+                  className="landing-cta-btn"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 22px', fontSize: '14.5px' }}
+                  onClick={() => (onNavigate ? onNavigate('group-challenge') : onGetStarted())}
+                >
+                  <span>Explore Friend Circle</span>
+                  <svg className="landing-btn-arrow" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================================================
+            FEATURE 5: BATTLE FIELD
+            - Text (Battle Field) comes from left
+            - Image (battle field.png) comes from right (opposite sides transition)
+           ========================================================================= */}
+        <section className="landing-feature-section landing-feature-battlefield" id="feature-battlefield">
+          <div className="landing-feature-grid landing-battlefield-grid">
+            {/* Text side: comes from left */}
+            <div className="scroll-reveal anim-slide-in-left landing-feature-text">
+              <h2 className="landing-feature-title">Battle Field</h2>
+              <p className="landing-feature-description">
+                Step into the arena with live split-screen code duels between rival circles and teams.
+                Author custom bugs and challenges for your opponent, swap problem sets in real time, and
+                race against the server clock to compile, run, and pass test cases head-to-head.
+              </p>
+              <ul className="feature-perks-list">
+                <li>
+                  <span className="perk-check">✓</span>
+                  <span>50/50 live split-screen arena with server-synced countdown timers</span>
+                </li>
+                <li>
+                  <span className="perk-check">✓</span>
+                  <span>Symmetrical authoring: Fix the Bug, Complete the Code, or Write from Scratch</span>
+                </li>
+                <li>
+                  <span className="perk-check">✓</span>
+                  <span>Real-time collaborative compiler, fair-play encrypted code, and automated judging</span>
+                </li>
+              </ul>
+
+              {/* Battle Field Callout Card */}
+              <div className="feature-callout-card battlefield-callout-card">
+                <div className="feature-callout-icon-wrap battlefield-callout-icon">
+                  <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M14.5 17.5L3 6V3h3l11.5 11.5" />
+                    <path d="M13 19l6-6" />
+                    <path d="M16 16l4 4" />
+                    <path d="M19 21l2-2" />
+                    <path d="M9.5 6.5L21 18v3h-3L6.5 9.5" />
+                    <path d="M5 8l6-6" />
+                    <path d="M8 5l-4-4" />
+                    <path d="M2 5l2-2" />
+                  </svg>
+                </div>
+                <div className="feature-callout-info">
+                  <span className="feature-callout-tag">Real-Time Competitive Arena</span>
+                  <p className="feature-callout-quote">"Live Split-Screen Code Battles & Sudden-Death Duels"</p>
+                </div>
+              </div>
+
+              <div style={{ marginTop: '4px' }}>
+                <button
+                  type="button"
+                  className="landing-cta-btn"
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', padding: '10px 22px', fontSize: '14.5px' }}
+                  onClick={() => (onNavigate ? onNavigate('battle-zone') : onGetStarted())}
+                >
+                  <span>Enter Battle Field</span>
+                  <svg className="landing-btn-arrow" viewBox="0 0 20 20" fill="currentColor" width="16" height="16">
+                    <path fillRule="evenodd" d="M10.293 3.293a1 1 0 011.414 0l6 6a1 1 0 010 1.414l-6 6a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-4.293-4.293a1 1 0 010-1.414z" clipRule="evenodd" />
+                  </svg>
+                </button>
+              </div>
+            </div>
+
+            {/* Image side: comes from right */}
+            <div className="scroll-reveal anim-slide-in-right landing-feature-media battlefield-media-container">
+              <div className="landing-card-glow-wrap battlefield-glow-wrap">
+                <img
+                  src="/battle field.png"
+                  alt="CodeLife Battle Field Live Split-Screen Arena"
+                  className="landing-feature-img battlefield-feature-img"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null;
+                    e.currentTarget.src = '/battle field.png';
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* =========================================================================
             ENDING SECTION
             - Image: combine.png
             - Final Call To Action Banner
@@ -594,8 +754,8 @@ export default function LandingPage({ onGetStarted, currentUser, onNavigate, onS
                   </p>
                   <p>
                     By uniting a curated <em>Code Store</em>, an instant multi-language <em>Code Editor</em> (C, C++, Python),
-                    and an inspiring <em>Streak Counter</em>, CodeLife bridges the gap between passive learning and
-                    active muscle memory retention.
+                    an inspiring <em>Streak Counter</em>, collaborative <em>Friend Circles</em>, and the competitive <em>Battle Field</em>,
+                    CodeLife bridges the gap between passive learning and active muscle memory retention.
                   </p>
                   <p>
                     <strong>"1 Code Daily = Lifelong Retention"</strong> — Commit to just one challenge every day,

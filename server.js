@@ -1389,12 +1389,6 @@ function checkAndUpdateBattleTimeouts(battle) {
   }
 
   if (battle.phase === 'SOLVING') {
-    // Advance to ROUND_RESULT
-    battle.phase = 'ROUND_RESULT';
-    battle.phaseStartedAt = new Date(now).toISOString();
-    battle.phaseDurationSeconds = 15;
-    battle.phaseEndTime = new Date(now + 15 * 1000).toISOString();
-
     const teamAPassed = Boolean(currentRound.teamASubmission?.allPassed);
     const teamBPassed = Boolean(currentRound.teamBSubmission?.allPassed);
     let roundWinner = 'tie';
@@ -1415,6 +1409,42 @@ function checkAndUpdateBattleTimeouts(battle) {
       teamBScore: battle.teams.teamB.score,
     };
     currentRound.status = 'completed';
+
+    // If final round, advance directly to FINISHED without intermediate "see final result" button
+    if (battle.currentRound >= (battle.totalRounds || 1)) {
+      battle.phase = 'FINISHED';
+      battle.status = 'finished';
+      battle.phaseEndTime = null;
+
+      const scoreA = battle.teams.teamA.score || 0;
+      const scoreB = battle.teams.teamB.score || 0;
+      let overallWinner = 'tie';
+      if (scoreA > scoreB) overallWinner = 'teamA';
+      else if (scoreB > scoreA) overallWinner = 'teamB';
+      else {
+        const timeA = battle.teams.teamA.totalSolveTimeSeconds || 0;
+        const timeB = battle.teams.teamB.totalSolveTimeSeconds || 0;
+        if (timeA < timeB) overallWinner = 'teamA';
+        else if (timeB < timeA) overallWinner = 'teamB';
+      }
+      battle.winner = overallWinner;
+
+      const allMembers = [
+        ...(battle.teams.teamA.members || []).map((m) => ({ ...m, team: 'teamA', teamName: battle.teams.teamA.name })),
+        ...(battle.teams.teamB.members || []).map((m) => ({ ...m, team: 'teamB', teamName: battle.teams.teamB.name })),
+      ];
+      if (allMembers.length > 0) {
+        const sorted = [...allMembers].sort((a, b) => (b.score || 0) - (a.score || 0));
+        battle.mvp = sorted[0];
+      }
+      return true;
+    }
+
+    // Advance to ROUND_RESULT for multi-round battles
+    battle.phase = 'ROUND_RESULT';
+    battle.phaseStartedAt = new Date(now).toISOString();
+    battle.phaseDurationSeconds = 15;
+    battle.phaseEndTime = new Date(now + 15 * 1000).toISOString();
     return true;
   }
 
@@ -1646,6 +1676,44 @@ app.post('/api/battles/:battleId/submit', (req, res) => {
   saveBattlesToFile(battles);
   broadcastBattleEvent(battleId, { type: 'submission_result', teamKey, allPassed: submission.allPassed, battle });
 
+  return res.json({ success: true, battle });
+});
+
+// POST /api/battles/:battleId/time (Set or extend custom battle time)
+app.post('/api/battles/:battleId/time', (req, res) => {
+  const { battleId } = req.params;
+  const { minutes, addMinutes, username } = req.body || {};
+  const battles = loadBattlesFromFile();
+  const battle = battles.find((b) => b.id === battleId);
+  if (!battle) return res.status(404).json({ error: 'Battle not found' });
+
+  const now = Date.now();
+  if (minutes !== undefined && minutes !== null) {
+    const mins = Math.max(1, Math.min(180, Number(minutes)));
+    if (!battle.settings) battle.settings = {};
+    battle.settings.solvingTimeMinutes = mins;
+    battle.phaseDurationSeconds = mins * 60;
+    battle.phaseEndTime = new Date(now + mins * 60 * 1000).toISOString();
+  } else if (addMinutes) {
+    const curEnd = new Date(battle.phaseEndTime || now).getTime();
+    const newEnd = Math.max(now + 30 * 1000, curEnd + Number(addMinutes) * 60 * 1000);
+    battle.phaseEndTime = new Date(newEnd).toISOString();
+    battle.phaseDurationSeconds = Math.round((newEnd - now) / 1000);
+  }
+
+  if (username) {
+    if (!battle.events) battle.events = [];
+    battle.events.push({
+      id: `ev_${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      type: 'time_updated',
+      user: username,
+      message: `Battle time adjusted by @${username}`,
+    });
+  }
+
+  saveBattlesToFile(battles);
+  broadcastBattleEvent(battleId, { type: 'time_updated', battle, phaseEndTime: battle.phaseEndTime });
   return res.json({ success: true, battle });
 });
 

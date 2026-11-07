@@ -134,7 +134,7 @@
 }
 
 .landing-brand-name {
-  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-family: 'Bell MT', 'Bell', 'Bell MD', 'Bell Md BT', 'Georgia', serif;
   font-size: 21px;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -355,7 +355,7 @@
 
 /* Heading: "What is the purpose of CodeLife" */
 .landing-hero-title {
-  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-family: 'Bell MT', 'Bell', 'Bell MD', 'Bell Md BT', 'Georgia', serif;
   font-size: clamp(32px, 4.5vw, 46px);
   font-weight: 700;
   line-height: 1.25;
@@ -421,7 +421,7 @@
   border: 1px solid rgba(215, 183, 166, 0.45);
   padding: 10px 34px;
   border-radius: 9999px;
-  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-family: 'Bell MT', 'Bell', 'Bell MD', 'Bell Md BT', 'Georgia', serif;
   font-size: 24px;
   font-weight: 700;
   text-transform: none;
@@ -463,7 +463,7 @@
 }
 
 .landing-feature-title {
-  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-family: 'Bell MT', 'Bell', 'Bell MD', 'Bell Md BT', 'Georgia', serif;
   font-size: clamp(30px, 3.8vw, 42px);
   font-weight: 700;
   color: #ffffff;
@@ -743,6 +743,153 @@
 }
 
 /* ==========================================================================
+   8B. FRIEND CIRCLE SHOWCASE (Reversed Layout: Media Left, Text Right)
+   ========================================================================== */
+.landing-feature-circle .landing-circle-grid {
+  grid-template-columns: 1.15fr 1fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.circle-media-container {
+  width: 100%;
+}
+
+.circle-glow-wrap {
+  position: relative;
+  border-radius: 26px;
+  background: rgba(36, 23, 21, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    0 0 40px rgba(180, 130, 105, 0.22),
+    inset 0 1px 1px rgba(255, 255, 255, 0.32);
+  overflow: hidden;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.circle-glow-wrap:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 28px 68px rgba(0, 0, 0, 0.75),
+    0 0 50px rgba(215, 183, 166, 0.32),
+    inset 0 1px 1px rgba(255, 255, 255, 0.42);
+}
+
+.circle-feature-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  object-fit: cover;
+}
+
+/* ==========================================================================
+   8C. BATTLE FIELD SHOWCASE (Standard Layout: Text Left, Media Right)
+   ========================================================================== */
+.landing-feature-battlefield .landing-battlefield-grid {
+  grid-template-columns: 1fr 1.15fr;
+  gap: 56px;
+  align-items: center;
+}
+
+.battlefield-media-container {
+  width: 100%;
+}
+
+.battlefield-glow-wrap {
+  position: relative;
+  border-radius: 26px;
+  background: rgba(36, 23, 21, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  padding: 14px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 
+    0 24px 60px rgba(0, 0, 0, 0.65),
+    0 0 40px rgba(230, 110, 60, 0.25),
+    inset 0 1px 1px rgba(255, 255, 255, 0.32);
+  overflow: hidden;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+}
+
+.battlefield-glow-wrap:hover {
+  transform: translateY(-4px);
+  box-shadow: 
+    0 28px 68px rgba(0, 0, 0, 0.75),
+    0 0 52px rgba(255, 140, 90, 0.35),
+    inset 0 1px 1px rgba(255, 255, 255, 0.42);
+}
+
+.battlefield-feature-img {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 18px;
+  object-fit: cover;
+}
+
+/* Feature Callout Cards (Friend Circle & Battle Field) */
+.feature-callout-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 20px;
+  border-radius: 20px;
+  background: rgba(36, 23, 21, 0.75);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  margin-top: 8px;
+}
+
+.feature-callout-icon-wrap {
+  width: 52px;
+  height: 52px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.circle-callout-icon {
+  box-shadow: 0 0 16px rgba(135, 190, 255, 0.25);
+  color: #c2e0ff;
+}
+
+.battlefield-callout-icon {
+  box-shadow: 0 0 16px rgba(255, 125, 70, 0.3);
+  color: #ffb18a;
+}
+
+.feature-callout-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.feature-callout-tag {
+  font-size: 11.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.9px;
+  color: #e6c4b4;
+}
+
+.feature-callout-quote {
+  font-size: 14.5px;
+  font-weight: 600;
+  font-style: italic;
+  color: #ffffff;
+  margin: 0;
+}
+
+/* ==========================================================================
    9. ENDING SECTION: COMBINE SHOWCASE & FINAL CTA
    ========================================================================== */
 .landing-ending-section {
@@ -760,7 +907,7 @@
 }
 
 .ending-title {
-  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-family: 'Bell MT', 'Bell', 'Bell MD', 'Bell Md BT', 'Georgia', serif;
   font-size: clamp(32px, 4.2vw, 44px);
   font-weight: 700;
   color: #ffffff;
@@ -813,7 +960,7 @@
 }
 
 .cta-box-title {
-  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-family: 'Bell MT', 'Bell', 'Bell MD', 'Bell Md BT', 'Georgia', serif;
   font-size: clamp(24px, 3.2vw, 32px);
   font-weight: 700;
   color: #ffffff;
@@ -862,7 +1009,7 @@
 }
 
 .footer-brand {
-  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-family: 'Bell MT', 'Bell', 'Bell MD', 'Bell Md BT', 'Georgia', serif;
   font-size: 18px;
   font-weight: 700;
   color: #ffffff;
@@ -1036,7 +1183,7 @@
 }
 
 .modal-title {
-  font-family: 'Bell MT', 'Bell', 'Georgia', serif;
+  font-family: 'Bell MT', 'Bell', 'Bell MD', 'Bell Md BT', 'Georgia', serif;
   font-size: 26px;
   font-weight: 700;
   color: #ffffff;
@@ -1154,18 +1301,22 @@ a.contact-val:hover {
 @media (max-width: 992px) {
   .landing-feature-grid,
   .landing-feature-reversed .landing-feature-grid,
-  .landing-feature-compiler .landing-compiler-grid {
+  .landing-feature-compiler .landing-compiler-grid,
+  .landing-feature-circle .landing-circle-grid,
+  .landing-feature-battlefield .landing-battlefield-grid {
     grid-template-columns: 1fr;
     gap: 36px;
   }
 
   .landing-feature-reversed .landing-feature-media,
-  .landing-feature-compiler .compiler-media-container {
+  .landing-feature-compiler .compiler-media-container,
+  .landing-feature-circle .circle-media-container {
     order: 2;
   }
 
   .landing-feature-reversed .landing-feature-text,
-  .landing-feature-compiler .landing-feature-text {
+  .landing-feature-compiler .landing-feature-text,
+  .landing-feature-circle .landing-feature-text {
     order: 1;
   }
 

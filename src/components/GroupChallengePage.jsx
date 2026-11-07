@@ -248,6 +248,26 @@ export default function GroupChallengePage({
           </div>
           <span className="gc-brand-title">CodeLife</span>
         </div>
+
+        <button
+          type="button"
+          className="gc-back-btn"
+          onClick={() => (onNavigate ? onNavigate('dashboard') : null)}
+          title="Return to Dashboard"
+          style={{
+            background: 'rgba(225, 151, 121, 0.15)',
+            border: '1px solid rgba(225, 175, 155, 0.35)',
+            borderRadius: '8px',
+            color: '#f5e6e1',
+            padding: '8px 16px',
+            fontSize: '13px',
+            fontWeight: 600,
+            cursor: 'pointer',
+            transition: 'all 0.2s',
+          }}
+        >
+          ← Back to Dashboard
+        </button>
       </header>
 
       {/* =====================================================================

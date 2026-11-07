@@ -1739,3 +1739,602 @@
   padding: 6px 12px;
   font-size: 12px;
 }
+
+/* ---------------------------------------------------------------------------
+   Connect to Opponent Team Modal & Arena Problem / Compiler Controls
+   --------------------------------------------------------------------------- */
+.bz-connect-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 6, 5, 0.82);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.bz-connect-modal {
+  background: #1e1310;
+  border: 1px solid rgba(225, 175, 155, 0.35);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 520px;
+  padding: 30px 28px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  color: #ffffff;
+  font-family: inherit;
+  box-sizing: border-box;
+  animation: bz-modal-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes bz-modal-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.bz-connect-badge {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1.5px;
+  color: #ffb89e;
+  background: rgba(225, 151, 121, 0.2);
+  border: 1px solid rgba(225, 151, 121, 0.35);
+  border-radius: 999px;
+  padding: 3px 10px;
+  margin-bottom: 8px;
+}
+
+.bz-connect-title {
+  margin: 0 0 8px 0;
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.bz-connect-desc {
+  margin: 0 0 20px 0;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #d1b4a7;
+}
+
+.bz-connect-share-box {
+  background: rgba(36, 21, 18, 0.75);
+  border: 1px dashed rgba(225, 175, 155, 0.3);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 20px;
+}
+
+.bz-share-label {
+  font-size: 12px;
+  color: #c4a496;
+  margin-bottom: 6px;
+}
+
+.bz-share-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.bz-share-code {
+  font-family: monospace;
+  font-size: 1.25rem;
+  font-weight: 800;
+  letter-spacing: 2px;
+  color: #ffb89e;
+}
+
+.bz-share-copy-btn {
+  background: rgba(225, 151, 121, 0.25);
+  border: 1px solid rgba(225, 151, 121, 0.45);
+  border-radius: 6px;
+  padding: 5px 12px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bz-share-copy-btn:hover {
+  background: rgba(225, 151, 121, 0.4);
+}
+
+.bz-share-sub {
+  display: block;
+  font-size: 11px;
+  color: #a88a7c;
+  margin-top: 6px;
+}
+
+.bz-connect-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 16px;
+}
+
+.bz-connect-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #e59779;
+}
+
+.bz-connect-input,
+.bz-connect-select {
+  background: #140d0c;
+  border: 1px solid rgba(225, 175, 155, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  font-size: 14px;
+  color: #ffffff;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.bz-connect-input:focus,
+.bz-connect-select:focus {
+  border-color: #e59779;
+  box-shadow: 0 0 0 2px rgba(229, 151, 121, 0.2);
+}
+
+.bz-connect-error {
+  background: rgba(255, 82, 82, 0.15);
+  border: 1px solid #ff5252;
+  border-radius: 8px;
+  color: #ff8a80;
+  font-size: 12.5px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+}
+
+.bz-connect-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* Language picker situated directly on compiler header */
+.bz-lang-picker-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bz-lang-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ffcfbe;
+}
+
+.bz-lang-select {
+  background: #140d0c;
+  color: #ffffff;
+  border: 1px solid rgba(225, 175, 155, 0.35);
+  border-radius: 6px;
+  padding: 4px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  outline: none;
+}
+
+.bz-lang-select:focus {
+  border-color: #ffb89e;
+}
+
+/* Give Problem inside Problem Section */
+.bz-problem-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bz-give-toggle-btn {
+  background: rgba(229, 151, 121, 0.2);
+  border: 1px solid rgba(229, 151, 121, 0.4);
+  border-radius: 6px;
+  color: #ffcfbe;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.bz-give-toggle-btn:hover {
+  background: rgba(229, 151, 121, 0.35);
+  color: #ffffff;
+}
+
+.bz-give-problem-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 8px 0;
+  animation: bz-panel-fade 0.2s ease;
+}
+
+@keyframes bz-panel-fade {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.bz-give-panel-header h4 {
+  margin: 0;
+  font-size: 13.5px;
+  color: #ffcfbe;
+}
+
+.bz-give-sub {
+  font-size: 11.5px;
+  color: #bfa093;
+}
+
+.bz-preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 4px 0;
+}
+
+.bz-preset-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(225, 175, 155, 0.25);
+  border-radius: 6px;
+  color: #e5ded9;
+  font-size: 11px;
+  padding: 4px 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.bz-preset-btn:hover {
+  background: rgba(229, 151, 121, 0.28);
+  color: #ffffff;
+  border-color: #e59779;
+}
+
+.bz-give-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.bz-give-input,
+.bz-give-textarea {
+  background: #120a09;
+  border: 1px solid rgba(225, 175, 155, 0.25);
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-size: 12.5px;
+  color: #ffffff;
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.bz-give-input:focus,
+.bz-give-textarea:focus {
+  border-color: #e59779;
+}
+
+.bz-give-actions-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.bz-btn-sm {
+  padding: 6px 12px;
+  font-size: 12px;
+}
+
+.bz-notice-banner {
+  background: rgba(46, 125, 50, 0.25);
+  border: 1px solid #4caf50;
+  border-radius: 8px;
+  color: #a5d6a7;
+  padding: 10px 16px;
+  margin: 10px 20px 0 20px;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.bz-problem-empty-state {
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.bz-empty-text {
+  color: #d1b4a7;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 12px 0;
+}
+
+/* Hub Screen Top Navigation */
+.bz-hub-top-nav {
+  width: 100%;
+  max-width: 820px;
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 16px;
+}
+
+/* Connect Modal Top Bar */
+.bz-connect-top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.bz-modal-back-btn {
+  background: rgba(225, 151, 121, 0.15);
+  border: 1px solid rgba(225, 175, 155, 0.3);
+  color: #f1dad0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.bz-modal-back-btn:hover {
+  background: rgba(225, 151, 121, 0.35);
+  color: #ffffff;
+}
+
+/* Panel Header Row with Back Button */
+.bz-give-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+}
+
+.bz-panel-back-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(225, 175, 155, 0.25);
+  color: #f1dad0;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+}
+
+.bz-panel-back-btn:hover {
+  background: rgba(225, 151, 121, 0.3);
+  color: #ffffff;
+}
+
+.bz-nav-back-sub {
+  background: rgba(30, 18, 15, 0.6);
+  opacity: 0.9;
+}
+
+/* ==========================================================================
+   CUSTOM TIME SETTING STYLES (CONNECT MODAL, ARENA TOPBAR, LOBBY)
+   ========================================================================== */
+
+/* Time Chips Selector */
+.bz-time-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 8px;
+}
+
+.bz-time-chip {
+  background: rgba(45, 26, 22, 0.8);
+  border: 1px solid rgba(225, 175, 155, 0.28);
+  color: #d1b4a7;
+  padding: 5px 12px;
+  border-radius: 9999px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bz-time-chip:hover {
+  background: rgba(75, 42, 35, 0.9);
+  color: #ffffff;
+  border-color: rgba(225, 175, 155, 0.5);
+}
+
+.bz-time-chip.selected {
+  background: linear-gradient(135deg, #e59779 0%, #c46d4c 100%);
+  color: #ffffff;
+  border-color: #ffb89e;
+  box-shadow: 0 2px 8px rgba(229, 151, 121, 0.35);
+}
+
+/* Custom Time Numeric Input Wrap */
+.bz-custom-time-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bz-time-number-input {
+  max-width: 140px;
+  text-align: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  background: rgba(25, 14, 12, 0.9);
+}
+
+.bz-time-input-suffix {
+  font-size: 12px;
+  color: #d1b4a7;
+  font-weight: 500;
+}
+
+/* Arena Topbar Countdown Wrapper & Custom Time Button */
+.bz-timer-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bz-time-adjust-btn {
+  background: rgba(55, 30, 24, 0.85);
+  border: 1px solid rgba(225, 175, 155, 0.35);
+  color: #f1dad0;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+
+.bz-time-adjust-btn:hover {
+  background: rgba(90, 48, 38, 0.95);
+  color: #ffffff;
+  border-color: rgba(225, 175, 155, 0.65);
+  transform: translateY(-1px);
+}
+
+/* Arena Custom Time Modal */
+.bz-time-modal {
+  background: #1e1310;
+  border: 1px solid rgba(225, 175, 155, 0.35);
+  border-radius: 18px;
+  width: 100%;
+  max-width: 460px;
+  padding: 26px 24px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
+  color: #ffffff;
+  animation: bz-modal-pop 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  box-sizing: border-box;
+}
+
+.bz-time-modal-title {
+  margin: 0 0 6px 0;
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.bz-time-modal-desc {
+  margin: 0 0 16px 0;
+  font-size: 13px;
+  line-height: 1.45;
+  color: #d1b4a7;
+}
+
+.bz-current-time-display {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(36, 20, 17, 0.8);
+  border: 1px solid rgba(225, 175, 155, 0.25);
+  border-radius: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+}
+
+.bz-current-time-label {
+  font-size: 13px;
+  color: #c4a496;
+}
+
+.bz-current-time-val {
+  font-family: monospace;
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: #ffb89e;
+  letter-spacing: 1px;
+}
+
+.bz-quick-extend-section {
+  margin-bottom: 16px;
+}
+
+.bz-quick-time-buttons {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.bz-quick-add-btn {
+  flex: 1;
+  background: rgba(55, 30, 24, 0.7);
+  border: 1px solid rgba(225, 175, 155, 0.3);
+  color: #f1dad0;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 7px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.bz-quick-add-btn:hover {
+  background: rgba(90, 48, 38, 0.9);
+  color: #ffffff;
+  border-color: rgba(225, 175, 155, 0.55);
+}
+
+.bz-custom-set-section {
+  margin-bottom: 20px;
+}
+
+.bz-time-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+/* Lobby Custom Time Controls */
+.bz-lobby-custom-time-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bz-lobby-time-num-input {
+  width: 65px;
+  background: rgba(30, 16, 13, 0.8);
+  border: 1px solid rgba(225, 175, 155, 0.3);
+  border-radius: 6px;
+  color: #ffffff;
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 6px 8px;
+  text-align: center;
+  box-sizing: border-box;
+}
+
+.bz-lobby-time-num-input:focus {
+  outline: none;
+  border-color: #e59779;
+}

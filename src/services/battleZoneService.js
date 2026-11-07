@@ -595,7 +595,7 @@ export function updateBattleSettings(battleId, requesterUsername, updates = {}) 
   }
 
   if (updates.solvingTimeMinutes) {
-    battle.settings.solvingTimeMinutes = Math.max(1, Math.min(60, updates.solvingTimeMinutes));
+    battle.settings.solvingTimeMinutes = Math.max(1, Math.min(180, updates.solvingTimeMinutes));
   }
 
   if (updates.challengeType && Object.values(CHALLENGE_TYPES).includes(updates.challengeType)) {
@@ -1268,11 +1268,6 @@ export function advanceToRoundResultPhase(battle) {
   const now = Date.now();
   const resultDurationSeconds = 15; // 15 seconds to view round results
 
-  battle.phase = BATTLE_PHASES.ROUND_RESULT;
-  battle.phaseStartedAt = new Date(now).toISOString();
-  battle.phaseDurationSeconds = resultDurationSeconds;
-  battle.phaseEndTime = new Date(now + resultDurationSeconds * 1000).toISOString();
-
   const currentRound = battle.rounds[battle.currentRound - 1];
   const teamAPassed = Boolean(currentRound.teamASubmission?.allPassed);
   const teamBPassed = Boolean(currentRound.teamBSubmission?.allPassed);
@@ -1306,11 +1301,58 @@ export function advanceToRoundResultPhase(battle) {
       winner === 'teamA' ? battle.teams.teamA.name : winner === 'teamB' ? battle.teams.teamB.name : 'Tie'
     }`,
   });
+
+  // If this is the final round, immediately finish the battle so the final result is shown directly!
+  // No intermediate "see final result" button required.
+  if (battle.currentRound >= battle.totalRounds) {
+    finishBattle(battle);
+    return;
+  }
+
+  battle.phase = BATTLE_PHASES.ROUND_RESULT;
+  battle.phaseStartedAt = new Date(now).toISOString();
+  battle.phaseDurationSeconds = resultDurationSeconds;
+  battle.phaseEndTime = new Date(now + resultDurationSeconds * 1000).toISOString();
+}
+
+/**
+ * Update custom time for a battle (set minutes or extend by addMinutes)
+ */
+export function updateBattleTime(battleId, requesterUsername, { minutes, addMinutes }) {
+  const battle = getBattleById(battleId);
+  if (!battle) return { success: false, error: 'Battle not found.' };
+
+  const cleanUser = (requesterUsername || '').trim().toLowerCase().replace(/^@/, '');
+  const now = Date.now();
+
+  if (minutes !== undefined && minutes !== null) {
+    const mins = Math.max(1, Math.min(180, Number(minutes)));
+    if (!battle.settings) battle.settings = {};
+    battle.settings.solvingTimeMinutes = mins;
+    battle.phaseDurationSeconds = mins * 60;
+    battle.phaseEndTime = new Date(now + mins * 60 * 1000).toISOString();
+  } else if (addMinutes) {
+    const curEnd = new Date(battle.phaseEndTime || now).getTime();
+    const newEnd = Math.max(now + 30 * 1000, curEnd + Number(addMinutes) * 60 * 1000);
+    battle.phaseEndTime = new Date(newEnd).toISOString();
+    battle.phaseDurationSeconds = Math.round((newEnd - now) / 1000);
+  }
+
+  battle.events.push({
+    id: `ev_${Date.now()}`,
+    timestamp: new Date().toISOString(),
+    type: 'time_updated',
+    user: cleanUser,
+    message: `Battle time adjusted by @${cleanUser || 'user'}`,
+  });
+
+  saveBattle(battle);
+  return { success: true, battle };
 }
 
 export function advanceToNextRoundOrFinish(battleId) {
   const battle = getBattleById(battleId);
-  if (!battle || battle.phase !== BATTLE_PHASES.ROUND_RESULT) return null;
+  if (!battle || (battle.phase !== BATTLE_PHASES.ROUND_RESULT && battle.phase !== BATTLE_PHASES.SOLVING)) return null;
 
   if (battle.currentRound < battle.totalRounds) {
     // Start next round

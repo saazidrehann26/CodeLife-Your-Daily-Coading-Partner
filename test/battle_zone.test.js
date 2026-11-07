@@ -30,6 +30,7 @@ import {
   submitSolution,
   advanceToRoundResultPhase,
   advanceToNextRoundOrFinish,
+  updateBattleTime,
   finishBattle,
   calculateBattleMVP,
   getSanitizedBattleForUser,
@@ -511,6 +512,84 @@ describe('Battle Zone Live Split-Screen Code Battle Suite', () => {
       assert.ok(updated);
       assert.strictEqual(updated.teams.teamA.captainUsername, 'bob');
       assert.strictEqual(updated.teams.teamA.members.find((m) => m.username === 'bob').role, 'captain');
+    });
+  });
+
+  describe('8. Custom Time Setting & Direct Finish on Battle Conclusion', () => {
+    it('directly finishes match on final round without intermediate button or round result modal', () => {
+      const battle = {
+        id: 'battle_test_finish',
+        totalRounds: 1,
+        currentRound: 1,
+        phase: BATTLE_PHASES.SOLVING,
+        teams: {
+          teamA: { name: 'Alpha', score: 1, totalSolveTimeSeconds: 40, members: [{ username: 'alice' }] },
+          teamB: { name: 'Beta', score: 0, totalSolveTimeSeconds: 0, members: [{ username: 'bob' }] },
+        },
+        rounds: [
+          {
+            roundNumber: 1,
+            teamASubmission: { allPassed: true, solveTimeSeconds: 40, submittedBy: 'alice' },
+            teamBSubmission: { allPassed: false, solveTimeSeconds: 0, submittedBy: 'bob' },
+          },
+        ],
+        events: [],
+      };
+      saveBattle(battle);
+
+      // Call advanceToRoundResultPhase on final round
+      advanceToRoundResultPhase(battle);
+
+      // Must be directly FINISHED without intermediate ROUND_RESULT
+      assert.strictEqual(battle.phase, BATTLE_PHASES.FINISHED);
+      assert.strictEqual(battle.status, 'finished');
+      assert.strictEqual(battle.winner, 'teamA');
+    });
+
+    it('updates custom time in minutes and recalculates phase duration and end time', () => {
+      const battle = {
+        id: 'battle_test_custom_time',
+        totalRounds: 1,
+        currentRound: 1,
+        phase: BATTLE_PHASES.SOLVING,
+        settings: { solvingTimeMinutes: 15 },
+        teams: {
+          teamA: { name: 'Alpha', captainUsername: 'alice', members: [{ username: 'alice' }] },
+          teamB: { name: 'Beta', captainUsername: 'bob', members: [{ username: 'bob' }] },
+        },
+        events: [],
+      };
+      saveBattle(battle);
+
+      const res = updateBattleTime(battle.id, 'alice', { minutes: 25 });
+      assert.strictEqual(res.success, true);
+      assert.strictEqual(res.battle.settings.solvingTimeMinutes, 25);
+      assert.strictEqual(res.battle.phaseDurationSeconds, 25 * 60);
+      assert.ok(new Date(res.battle.phaseEndTime).getTime() > Date.now());
+    });
+
+    it('extends active battle timer with addMinutes', () => {
+      const battle = {
+        id: 'battle_test_extend_time',
+        totalRounds: 1,
+        currentRound: 1,
+        phase: BATTLE_PHASES.SOLVING,
+        settings: { solvingTimeMinutes: 15 },
+        phaseEndTime: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+        teams: {
+          teamA: { name: 'Alpha', captainUsername: 'alice', members: [{ username: 'alice' }] },
+          teamB: { name: 'Beta', captainUsername: 'bob', members: [{ username: 'bob' }] },
+        },
+        events: [],
+      };
+      saveBattle(battle);
+
+      const oldEnd = new Date(battle.phaseEndTime).getTime();
+      const res = updateBattleTime(battle.id, 'alice', { addMinutes: 5 });
+      assert.strictEqual(res.success, true);
+      const newEnd = new Date(res.battle.phaseEndTime).getTime();
+      // Should be roughly ~5 minutes (300,000 ms) later
+      assert.ok(newEnd - oldEnd >= 295000);
     });
   });
 });
