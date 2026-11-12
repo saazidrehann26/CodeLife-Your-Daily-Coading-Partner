@@ -128,8 +128,8 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
   // Post-battle solution reveal toggle
   const [showRevealedSolutions, setShowRevealedSolutions] = useState(false);
 
-  // Connect Opponent Modal state
-  const [showConnectModal, setShowConnectModal] = useState(false);
+  // Connect Opponent state
+  const [showConnectPage, setShowConnectPage] = useState(false);
   const [opponentCircleCode, setOpponentCircleCode] = useState('');
   const [chosenLanguage, setChosenLanguage] = useState('Python');
   const [customBattleMinutes, setCustomBattleMinutes] = useState(15);
@@ -783,7 +783,7 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
         }
       }
 
-      setShowConnectModal(false);
+      setShowConnectPage(false);
       setBattle(getSanitizedBattleForUser(matchedBattle, cleanUsername));
       if (onNavigate) {
         onNavigate(`battle-zone/${matchedBattle.id}`);
@@ -1054,6 +1054,174 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
   }
 
   if (!battle) {
+    if (showConnectPage) {
+      return (
+        <div className="bz-connect-screen">
+          <div className="bz-connect-page-wrapper">
+            <div className="bz-connect-page-nav">
+              <button
+                type="button"
+                className="bz-nav-back-btn"
+                onClick={() => {
+                  setShowConnectPage(false);
+                  setConnectError(null);
+                }}
+                title="Back to Battle Field Hub"
+              >
+                ← Back to Battle Field
+              </button>
+              <button
+                type="button"
+                className="bz-nav-back-btn bz-nav-back-sub"
+                onClick={() => onNavigate('dashboard')}
+                title="Back to Dashboard"
+              >
+                ← Back to Dashboard
+              </button>
+            </div>
+
+            <div className="bz-connect-card">
+              <div className="bz-connect-top-bar">
+                <button
+                  type="button"
+                  className="bz-modal-back-btn"
+                  onClick={() => {
+                    setShowConnectPage(false);
+                    setConnectError(null);
+                  }}
+                  title="Back to Battle Field"
+                >
+                  ← Back
+                </button>
+                <span className="bz-connect-badge">⚔️ LIVE TEAM MATCH</span>
+              </div>
+              <div className="bz-connect-header">
+                <h2 className="bz-connect-title">Connect to your opponent team</h2>
+                <p className="bz-connect-desc">
+                  Enter your opponent's circle code to connect both teams into the live split-screen battle arena.
+                </p>
+              </div>
+
+              {/* Current user's circle code for sharing */}
+              <div className="bz-connect-share-box">
+                <div className="bz-share-label">Your Circle Code (Share with opponent):</div>
+                <div className="bz-share-row">
+                  <span className="bz-share-code">{userCircle?.inviteCode || 'TEAM_READY'}</span>
+                  <button
+                    type="button"
+                    className="bz-share-copy-btn"
+                    onClick={() => {
+                      if (userCircle?.inviteCode) {
+                        navigator.clipboard.writeText(userCircle.inviteCode);
+                        setCopiedCode(true);
+                        setTimeout(() => setCopiedCode(false), 2000);
+                      }
+                    }}
+                  >
+                    {copiedCode ? '✓ Copied!' : 'Copy Code'}
+                  </button>
+                </div>
+                <span className="bz-share-sub">
+                  Team: <strong>{userCircle?.name || `${currentUser?.fullName || cleanUsername}'s Team`}</strong>
+                </span>
+              </div>
+
+              <form onSubmit={handleConnectOpponent} className="bz-connect-form">
+                <div className="bz-connect-field">
+                  <label htmlFor="opponent-circle-code-input" className="bz-connect-label">
+                    Enter opponent circle code:
+                  </label>
+                  <input
+                    id="opponent-circle-code-input"
+                    type="text"
+                    className="bz-connect-input"
+                    placeholder="e.g. CIR892 or RIVAL_TEAM"
+                    value={opponentCircleCode}
+                    onChange={(e) => setOpponentCircleCode(e.target.value.toUpperCase())}
+                    autoFocus
+                    required
+                  />
+                </div>
+
+                <div className="bz-connect-field">
+                  <label htmlFor="battle-language-select" className="bz-connect-label">
+                    Choose Compiler Language:
+                  </label>
+                  <select
+                    id="battle-language-select"
+                    className="bz-connect-select"
+                    value={chosenLanguage}
+                    onChange={(e) => setChosenLanguage(e.target.value)}
+                  >
+                    <option value="Python">Python 3</option>
+                    <option value="C">C (GCC)</option>
+                    <option value="C++">C++ (GCC)</option>
+                  </select>
+                </div>
+
+                <div className="bz-connect-field">
+                  <label htmlFor="custom-battle-time-input" className="bz-connect-label">
+                    ⏱️ Battle Duration (Custom Time):
+                  </label>
+                  <div className="bz-time-chips-container">
+                    {[5, 10, 15, 20, 30, 45, 60].map((mins) => (
+                      <button
+                        key={mins}
+                        type="button"
+                        className={`bz-time-chip ${customBattleMinutes === mins ? 'selected' : ''}`}
+                        onClick={() => setCustomBattleMinutes(mins)}
+                      >
+                        {mins}m
+                      </button>
+                    ))}
+                  </div>
+                  <div className="bz-custom-time-input-wrap">
+                    <input
+                      id="custom-battle-time-input"
+                      type="number"
+                      min="1"
+                      max="180"
+                      className="bz-connect-input bz-time-number-input"
+                      value={customBattleMinutes}
+                      onChange={(e) => setCustomBattleMinutes(Math.max(1, Math.min(180, Number(e.target.value) || 1)))}
+                      placeholder="Custom min"
+                    />
+                    <span className="bz-time-input-suffix">minutes</span>
+                  </div>
+                </div>
+
+                {connectError && (
+                  <div className="bz-connect-error">
+                    ⚠️ {connectError}
+                  </div>
+                )}
+
+                <div className="bz-connect-actions">
+                  <button
+                    type="button"
+                    className="bz-action-btn"
+                    onClick={() => {
+                      setShowConnectPage(false);
+                      setConnectError(null);
+                    }}
+                  >
+                    ← Back
+                  </button>
+                  <button
+                    type="submit"
+                    className="bz-action-btn bz-btn-primary"
+                    disabled={isConnecting}
+                  >
+                    {isConnecting ? 'Connecting Teams...' : '⚔️ Connect & Enter Battle'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     const allMatches = getAllBattles();
     const userMatches = allMatches.filter((b) => {
       const inA = b.teams?.teamA?.members?.some((m) => (m.username || '').toLowerCase() === cleanUsername);
@@ -1063,17 +1231,18 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
 
     return (
       <div className="bz-hub-screen">
-        <div className="bz-hub-top-nav">
-          <button
-            type="button"
-            className="bz-nav-back-btn"
-            onClick={() => onNavigate('dashboard')}
-            title="Back to Dashboard"
-          >
-            ← Back to Dashboard
-          </button>
-        </div>
-        <div className="bz-hub-card">
+        <div className="bz-hub-container">
+          <div className="bz-hub-top-nav">
+            <button
+              type="button"
+              className="bz-nav-back-btn"
+              onClick={() => onNavigate('dashboard')}
+              title="Back to Dashboard"
+            >
+              ← Back to Dashboard
+            </button>
+          </div>
+          <div className="bz-hub-card">
           <div className="bz-hub-badge">⚔️ LIVE COMPETITIVE ARENA</div>
           <h1 className="bz-hub-title">Battle Field</h1>
           <p className="bz-hub-subtitle">
@@ -1110,7 +1279,7 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
               className="bz-action-btn bz-btn-primary"
               onClick={() => {
                 setConnectError(null);
-                setShowConnectModal(true);
+                setShowConnectPage(true);
               }}
             >
               ⚔️ Connect to your opponent team
@@ -1123,143 +1292,6 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
               ← Back to Dashboard
             </button>
           </div>
-
-          {/* Modal / Card to Enter Opponent Circle Code */}
-          {showConnectModal && (
-            <div className="bz-connect-overlay" onClick={() => setShowConnectModal(false)}>
-              <div className="bz-connect-modal" onClick={(e) => e.stopPropagation()}>
-                <div className="bz-connect-top-bar">
-                  <button
-                    type="button"
-                    className="bz-modal-back-btn"
-                    onClick={() => setShowConnectModal(false)}
-                    title="Back to Battle Field"
-                  >
-                    ← Back
-                  </button>
-                  <span className="bz-connect-badge">⚔️ LIVE TEAM MATCH</span>
-                </div>
-                <div className="bz-connect-header">
-                  <h2 className="bz-connect-title">Connect to your opponent team</h2>
-                  <p className="bz-connect-desc">
-                    Enter your opponent's circle code to connect both teams into the live split-screen battle arena.
-                  </p>
-                </div>
-
-                {/* Current user's circle code for sharing */}
-                <div className="bz-connect-share-box">
-                  <div className="bz-share-label">Your Circle Code (Share with opponent):</div>
-                  <div className="bz-share-row">
-                    <span className="bz-share-code">{userCircle?.inviteCode || 'TEAM_READY'}</span>
-                    <button
-                      type="button"
-                      className="bz-share-copy-btn"
-                      onClick={() => {
-                        if (userCircle?.inviteCode) {
-                          navigator.clipboard.writeText(userCircle.inviteCode);
-                          setCopiedCode(true);
-                          setTimeout(() => setCopiedCode(false), 2000);
-                        }
-                      }}
-                    >
-                      {copiedCode ? '✓ Copied!' : 'Copy Code'}
-                    </button>
-                  </div>
-                  <span className="bz-share-sub">
-                    Team: <strong>{userCircle?.name || `${currentUser?.fullName || cleanUsername}'s Team`}</strong>
-                  </span>
-                </div>
-
-                <form onSubmit={handleConnectOpponent} className="bz-connect-form">
-                  <div className="bz-connect-field">
-                    <label htmlFor="opponent-circle-code-input" className="bz-connect-label">
-                      Enter opponent circle code:
-                    </label>
-                    <input
-                      id="opponent-circle-code-input"
-                      type="text"
-                      className="bz-connect-input"
-                      placeholder="e.g. CIR892 or RIVAL_TEAM"
-                      value={opponentCircleCode}
-                      onChange={(e) => setOpponentCircleCode(e.target.value.toUpperCase())}
-                      autoFocus
-                      required
-                    />
-                  </div>
-
-                  <div className="bz-connect-field">
-                    <label htmlFor="battle-language-select" className="bz-connect-label">
-                      Choose Compiler Language:
-                    </label>
-                    <select
-                      id="battle-language-select"
-                      className="bz-connect-select"
-                      value={chosenLanguage}
-                      onChange={(e) => setChosenLanguage(e.target.value)}
-                    >
-                      <option value="Python">Python 3</option>
-                      <option value="C">C (GCC)</option>
-                      <option value="C++">C++ (GCC)</option>
-                    </select>
-                  </div>
-
-                  <div className="bz-connect-field">
-                    <label htmlFor="custom-battle-time-input" className="bz-connect-label">
-                      ⏱️ Battle Duration (Custom Time):
-                    </label>
-                    <div className="bz-time-chips-container">
-                      {[5, 10, 15, 20, 30, 45, 60].map((mins) => (
-                        <button
-                          key={mins}
-                          type="button"
-                          className={`bz-time-chip ${customBattleMinutes === mins ? 'selected' : ''}`}
-                          onClick={() => setCustomBattleMinutes(mins)}
-                        >
-                          {mins}m
-                        </button>
-                      ))}
-                    </div>
-                    <div className="bz-custom-time-input-wrap">
-                      <input
-                        id="custom-battle-time-input"
-                        type="number"
-                        min="1"
-                        max="180"
-                        className="bz-connect-input bz-time-number-input"
-                        value={customBattleMinutes}
-                        onChange={(e) => setCustomBattleMinutes(Math.max(1, Math.min(180, Number(e.target.value) || 1)))}
-                        placeholder="Custom min"
-                      />
-                      <span className="bz-time-input-suffix">minutes</span>
-                    </div>
-                  </div>
-
-                  {connectError && (
-                    <div className="bz-connect-error">
-                      ⚠️ {connectError}
-                    </div>
-                  )}
-
-                  <div className="bz-connect-actions">
-                    <button
-                      type="button"
-                      className="bz-action-btn"
-                      onClick={() => setShowConnectModal(false)}
-                    >
-                      ← Back
-                    </button>
-                    <button
-                      type="submit"
-                      className="bz-action-btn bz-btn-primary"
-                      disabled={isConnecting}
-                    >
-                      {isConnecting ? 'Connecting Teams...' : '⚔️ Connect & Enter Battle'}
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
 
           {userMatches.length > 0 && (
             <div className="bz-hub-recent-section">
@@ -1289,7 +1321,8 @@ export default function BattleZonePage({ battleId, currentUser, onNavigate }) {
           )}
         </div>
       </div>
-    );
+    </div>
+  );
   }
 
   const { teamA, teamB } = battle.teams;

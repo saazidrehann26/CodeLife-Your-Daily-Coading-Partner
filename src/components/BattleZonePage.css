@@ -1597,18 +1597,47 @@
 /* Battle Field Arena Hub Screen */
 .bz-hub-screen {
   min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background-color: #140d0c;
+  background-image: url('/log_in_page_bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #ffffff;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: 40px 20px;
-  background-color: #140d0c;
-  color: #ffffff;
-  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
   box-sizing: border-box;
 }
 
-.bz-hub-card {
+.bz-hub-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 6, 5, 0.88);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bz-hub-container {
+  position: relative;
+  z-index: 1;
+  width: 100%;
   max-width: 820px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: auto;
+}
+
+.bz-hub-card {
   width: 100%;
   background: rgba(36, 21, 18, 0.85);
   backdrop-filter: blur(16px);
@@ -1617,6 +1646,7 @@
   padding: 36px 32px;
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
   text-align: center;
+  box-sizing: border-box;
 }
 
 .bz-hub-badge {
@@ -1741,8 +1771,59 @@
 }
 
 /* ---------------------------------------------------------------------------
-   Connect to Opponent Team Modal & Arena Problem / Compiler Controls
+   Connect to Opponent Team Dedicated Screen & Controls
    --------------------------------------------------------------------------- */
+.bz-connect-screen {
+  min-height: 100vh;
+  width: 100%;
+  position: relative;
+  background-color: #140d0c;
+  background-image: url('/log_in_page_bg.jpg');
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: #ffffff;
+  font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  box-sizing: border-box;
+}
+
+.bz-connect-screen::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 6, 5, 0.88);
+  backdrop-filter: blur(28px);
+  -webkit-backdrop-filter: blur(28px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.bz-connect-page-wrapper {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 580px;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  margin: auto;
+}
+
+.bz-connect-page-nav {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
 .bz-connect-overlay {
   position: fixed;
   inset: 0;
@@ -1756,14 +1837,17 @@
   box-sizing: border-box;
 }
 
+.bz-connect-card,
 .bz-connect-modal {
-  background: #1e1310;
+  background: rgba(30, 19, 16, 0.94);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(225, 175, 155, 0.35);
-  border-radius: 18px;
+  border-radius: 20px;
   width: 100%;
-  max-width: 520px;
-  padding: 30px 28px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  max-width: 580px;
+  padding: 34px 32px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
   color: #ffffff;
   font-family: inherit;
   box-sizing: border-box;
